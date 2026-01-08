@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AcadMark · Teacher Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+
+<body>
+  <div class="shell">
+    <aside class="sidebar-panel">
+      <div class="brand" style="margin-bottom: 2rem">
+        <div class="brand-mark">AM</div>
+        <div>
+          <h1>AcadMark</h1>
+          <p class="tagline">Teacher Workspace</p>
+        </div>
+      </div>
+
+      <nav class="sidebar">
+        <button class="btn secondary" data-start-session>
+          Start attendance
+        </button>
+        <button class="btn secondary" data-open-manual>
+          Manual override
+        </button>
+        <a href="#" class="btn ghost" data-signout>Sign out</a>
+      </nav>
+
+      <div class="card" style="margin-top: 2rem">
+        <h3>Session Snapshot</h3>
+        <div style="
+              margin-top: 1rem;
+              display: grid;
+              gap: 0.5rem;
+              font-size: 0.9rem;
+            ">
+          <div>
+            <strong>Subject:</strong> <span data-session-subject>–</span>
+          </div>
+          <div>
+            <strong>Year:</strong> <span data-session-year>–</span>
+          </div>
+          <div>
+            <strong>Division:</strong> <span data-session-division>–</span>
+          </div>
+          <div>
+            <strong>Stream:</strong> <span data-session-stream>–</span>
+          </div>
+          <div>
+            <strong>Started:</strong> <span data-session-start>–</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="content-panel layout-grid" style="gap: 1.5rem">
+      <header class="header" style="padding: 0">
+        <div>
+          <h2>Teacher Dashboard</h2>
+          <p class="tagline">Touch-friendly controls built for classrooms</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap">
+          <button class="btn secondary" data-view-history>
+            View History
+          </button>
+          <button class="btn ghost" data-refresh>Refresh</button>
+        </div>
+      </header>
+
+      <section class="layout-grid three" data-summary>
+        <div class="card">
+          <div class="stat">
+            <span class="stat-label">Sessions</span>
+            <span class="stat-value" data-summary-sessions>0</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <span class="stat-label">Avg attendance</span>
+            <span class="stat-value" data-summary-average>0%</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <span class="stat-label">Students present</span>
+            <span class="stat-value" data-summary-present>0</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" data-active-session style="display: none">
+        <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              gap: 1rem;
+            ">
+          <h3>Active session</h3>
+          <button class="btn" data-end-session>End & download</button>
+        </div>
+
+        <div style="
+              display: flex;
+              gap: 1.5rem;
+              margin-top: 1rem;
+              flex-wrap: wrap;
+            ">
+          <div>
+            <div class="badge" data-session-size>0 students</div>
+          </div>
+          <div>
+            <div class="badge success" data-session-present>0 present</div>
+          </div>
+          <div>
+            <div class="badge danger" data-session-absent>0 absent</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Roll No</th>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody data-attendance-body>
+                <tr>
+                  <td colspan="4">Tap "Start attendance" to begin.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" data-recent-sessions>
+        <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            ">
+          <h3>Recent Classes</h3>
+          <button class="btn ghost" data-clear-recent>Clear</button>
+        </div>
+        <div class="table-wrapper" style="margin-top: 1rem">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Subject</th>
+                <th>Division</th>
+                <th>Present</th>
+                <th>Absent</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody data-recent-body>
+              <tr>
+                <td colspan="6">No sessions recorded yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" data-activity-section>
+        <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              gap: 0.5rem;
+            ">
+          <h3>Activity log</h3>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn ghost" data-clear-activity>Clear</button>
+            <button class="btn ghost" data-refresh-activity>Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrapper" style="margin-top: 1rem">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Action</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody data-activity-body>
+              <tr>
+                <td colspan="3">No activity yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog data-manual-modal style="
+        border: none;
+        border-radius: 16px;
+        padding: 2rem;
+        width: min(420px, 90vw);
+      ">
+    <form method="dialog" class="layout-grid" style="gap: 1rem">
+      <h3>Manual override</h3>
+      <div class="input-group">
+        <label for="manualStudentId">Student ID</label>
+        <input id="manualStudentId" name="studentId" required />
+      </div>
+      <div class="input-group">
+        <label for="manualStatus">Status</label>
+        <select id="manualStatus" name="status" required>
+          <option value="P">Present</option>
+          <option value="A">Absent</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="manualReason">Reason (optional)</label>
+        <textarea id="manualReason" name="reason" rows="3"></textarea>
+      </div>
+      <menu style="display: flex; gap: 0.75rem; justify-content: flex-end">
+        <button type="button" class="btn secondary" data-cancel-manual>
+          Cancel
+        </button>
+        <button type="submit" class="btn" value="submit">Confirm</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog data-session-modal style="
+        border: none;
+        border-radius: 16px;
+        padding: 2rem;
+        width: min(420px, 90vw);
+      ">
+    <form method="dialog" class="layout-grid" style="gap: 1rem">
+      <h3>Start attendance</h3>
+      <p class="tagline">
+        Confirm class details before starting a new session.
+      </p>
+      <div class="input-group">
+        <label for="sessionSubject">Subject</label>
+        <select id="sessionSubject" name="subject" required>
+          <option value="">Select subject...</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="sessionYear">Year</label>
+        <select id="sessionYear" name="year" required>
+          <option value="">Select year...</option>
+          <option value="FY">FY (First Year)</option>
+          <option value="SY">SY (Second Year)</option>
+          <option value="TY">TY (Third Year)</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="sessionStream">Stream</label>
+        <select id="sessionStream" name="stream" required>
+          <option value="">Select stream...</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="sessionDivision">Division</label>
+        <select id="sessionDivision" name="division" required>
+          <option value="">Select division...</option>
+        </select>
+      </div>
+      <menu style="display: flex; gap: 0.75rem; justify-content: flex-end">
+        <button type="button" class="btn secondary" data-cancel-session>
+          Cancel
+        </button>
+        <button type="submit" class="btn" value="submit">Begin</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog data-history-modal style="
+        border: none;
+        border-radius: 16px;
+        padding: 2rem;
+        width: min(800px, 90vw);
+        max-height: 80vh;
+      ">
+    <div class="layout-grid" style="gap: 1rem">
+      <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          ">
+        <h3>Attendance History</h3>
+        <button type="button" class="btn ghost" data-close-history>
+          Close
+        </button>
+      </div>
+      <div class="table-wrapper" style="max-height: 60vh; overflow-y: auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Filename</th>
+              <th>Subject</th>
+              <th>Stream</th>
+              <th>Division</th>
+              <th>Saved</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody data-history-body>
+            <tr>
+              <td colspan="6">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast-stack" data-toast-stack></div>
+  <script type="module" src="/js/teacher.js"></script>
+</body>
+
+</html>

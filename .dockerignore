@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+*.md
+uploads/*
+!uploads/.gitkeep
+Student_details_db.txt
+Teacher_details_db.txt
+*.sql
+test_app.js
+run_tests.bat
+TESTING_REPORT.md
