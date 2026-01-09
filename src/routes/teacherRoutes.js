@@ -11,6 +11,8 @@ import {
   getAttendanceHistory,
   downloadAttendanceBackup,
   exportAttendanceExcel,
+  teacherGetDefaulterList,
+  teacherDownloadDefaulterList,
 } from "../controllers/teacherController.js";
 
 const router = Router();
@@ -27,5 +29,9 @@ router.post("/attendance/backup", saveAttendanceBackup);
 router.get("/attendance/history", getAttendanceHistory);
 router.get("/attendance/backup/:id", downloadAttendanceBackup);
 router.post("/attendance/export-excel", exportAttendanceExcel);
+
+// Defaulter management routes
+router.get("/defaulters", teacherGetDefaulterList);
+router.get("/defaulters/download", teacherDownloadDefaulterList);
 
 export default router;

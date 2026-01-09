@@ -817,11 +817,129 @@ async function loadAttendanceHistory() {
   }
 }
 
+function initDefaulterButton() {
+  const defaulterButton = document.querySelector("[data-generate-defaulters]");
+  if (!defaulterButton) return;
+
+  defaulterButton.addEventListener("click", async () => {
+    try {
+      // Prompt for threshold
+      const thresholdInput = prompt(
+        "Enter the minimum attendance percentage threshold (0-100):",
+        "75"
+      );
+
+      if (thresholdInput === null) {
+        return; // User cancelled
+      }
+
+      const threshold = parseFloat(thresholdInput);
+
+      if (isNaN(threshold) || threshold < 0 || threshold > 100) {
+        showToast({
+          title: "Invalid Input",
+          message: "Please enter a valid percentage between 0 and 100.",
+          type: "danger",
+        });
+        return;
+      }
+
+      // Optional filters
+      const month = prompt(
+        "Enter month (1-12) or leave blank for all months:",
+        ""
+      );
+      const year = prompt(
+        "Enter year (e.g., 2024) or leave blank for current year:",
+        ""
+      );
+
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.append("threshold", threshold.toString());
+
+      if (month && month.trim() !== "") {
+        const monthNum = parseInt(month);
+        if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12) {
+          params.append("month", monthNum.toString());
+        }
+      }
+
+      if (year && year.trim() !== "") {
+        const yearNum = parseInt(year);
+        if (!isNaN(yearNum)) {
+          params.append("year", yearNum.toString());
+        }
+      }
+
+      // Show loading state
+      defaulterButton.disabled = true;
+      defaulterButton.textContent = "⏳ Generating...";
+
+      // Fetch the Excel file
+      const response = await fetch(
+        `/api/teacher/defaulters/download?${params.toString()}`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate defaulter list");
+      }
+
+      // Get filename from Content-Disposition header
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `defaulters_threshold_${threshold}.xlsx`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(
+          /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+        );
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, "");
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      showToast({
+        title: "Success",
+        message: "Defaulter list downloaded successfully!",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error generating defaulter list:", error);
+      showToast({
+        title: "Error",
+        message: error.message || "Failed to generate defaulter list",
+        type: "danger",
+      });
+    } finally {
+      // Reset button state
+      defaulterButton.disabled = false;
+      defaulterButton.textContent = "📊 Generate Defaulter List";
+    }
+  });
+}
+
 function bootstrap() {
   renderActiveSession();
   attachAttendanceEvents();
   initDialogs();
   initControls();
+  initDefaulterButton();
   loadDashboard();
   loadActivity();
 }

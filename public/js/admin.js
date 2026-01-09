@@ -410,6 +410,82 @@ signoutLink?.addEventListener("click", async (event) => {
   }
 });
 
+// Defaulter List Generation
+const generateDefaultersButton = document.querySelector("[data-generate-defaulters]");
+generateDefaultersButton?.addEventListener("click", async () => {
+  // Ask user for threshold
+  const threshold = prompt("Enter minimum attendance percentage (0-100):", "75");
+  
+  if (threshold === null) return; // User cancelled
+  
+  const thresholdNum = parseFloat(threshold);
+  if (isNaN(thresholdNum) || thresholdNum < 0 || thresholdNum > 100) {
+    showToast({
+      title: "Invalid Input",
+      message: "Please enter a valid percentage between 0 and 100",
+      type: "error",
+    });
+    return;
+  }
+
+  // Optional filters
+  const month = prompt("Enter month (1-12, or leave blank for all months):", "");
+  const year = prompt("Enter year (or leave blank for current year):", new Date().getFullYear().toString());
+  const stream = prompt("Enter stream (or leave blank for all streams):", "");
+  const division = prompt("Enter division (or leave blank for all divisions):", "");
+
+  // Build query parameters
+  const params = new URLSearchParams({
+    threshold: thresholdNum,
+    type: 'monthly'
+  });
+  
+  if (month && !isNaN(parseInt(month))) params.append('month', month);
+  if (year) params.append('year', year);
+  if (stream) params.append('stream', stream);
+  if (division) params.append('division', division);
+
+  try {
+    toggleLoading(true);
+    
+    // Fetch the Excel file
+    const response = await fetch(`/api/admin/defaulters/download?${params.toString()}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Failed to generate defaulter list' }));
+      throw new Error(error.message);
+    }
+
+    // Download file
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Defaulter_List_${thresholdNum}%_${month || 'All'}_${year}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    showToast({
+      title: "Success",
+      message: `Defaulter list generated with ${thresholdNum}% threshold`,
+      type: "success",
+    });
+  } catch (error) {
+    showToast({
+      title: "Unable to generate defaulter list",
+      message: error.message,
+      type: "error",
+    });
+  } finally {
+    toggleLoading(false);
+  }
+});
+
 updateSteps();
 setupUploads();
 loadStats();

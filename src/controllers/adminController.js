@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import ExcelJS from "exceljs";
 
 import pool from "../../config/db.js";
+import defaulterService from "../services/defaulterService.js";
 
 import {
   parseStudentImport,
@@ -398,3 +399,126 @@ export async function triggerAutoMapping(req, res, next) {
     return next(error);
   }
 }
+
+// Defaulter List Management
+
+export async function getDefaulterList(req, res, next) {
+  try {
+    const { month, year, stream, division, subject, type = 'monthly', threshold = 75 } = req.query;
+
+    let defaulters;
+    if (type === 'overall') {
+      defaulters = await defaulterService.getOverallDefaulters({ 
+        stream, 
+        division, 
+        year,
+        threshold: parseFloat(threshold)
+      });
+    } else {
+      defaulters = await defaulterService.getDefaulterList({
+        month: month ? parseInt(month) : undefined,
+        year: year ? parseInt(year) : undefined,
+        stream,
+        division,
+        subject,
+        threshold: parseFloat(threshold)
+      });
+    }
+
+    return res.json({
+      defaulters,
+      count: defaulters.length,
+      threshold: parseFloat(threshold),
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function downloadDefaulterList(req, res, next) {
+  try {
+    const { month, year, stream, division, subject, type = 'monthly', threshold = 75 } = req.query;
+
+    let defaulters;
+    if (type === 'overall') {
+      defaulters = await defaulterService.getOverallDefaulters({ 
+        stream, 
+        division, 
+        year,
+        threshold: parseFloat(threshold)
+      });
+    } else {
+      defaulters = await defaulterService.getDefaulterList({
+        month: month ? parseInt(month) : undefined,
+        year: year ? parseInt(year) : undefined,
+        stream,
+        division,
+        subject,
+        threshold: parseFloat(threshold)
+      });
+    }
+
+    if (defaulters.length === 0) {
+      return res.status(404).json({ message: 'No defaulters found' });
+    }
+
+    const workbook = await defaulterService.generateDefaulterExcel(defaulters, {
+      month: month ? parseInt(month) : undefined,
+      year: year ? parseInt(year) : undefined,
+      type,
+      threshold: parseFloat(threshold),
+    });
+
+    // Save to history
+    await defaulterService.saveDefaulterHistory(
+      defaulters,
+      req.session.user.id,
+      'admin'
+    );
+
+    // Log activity
+    await pool.query(
+      `INSERT INTO activity_logs 
+        (actor_role, actor_id, action, details, created_at) 
+       VALUES ('admin', ?, 'DOWNLOAD_DEFAULTER_LIST', ?, NOW())`,
+      [
+        req.session.user.id,
+        JSON.stringify({ 
+          count: defaulters.length, 
+          threshold: parseFloat(threshold),
+          filters: { month, year, stream, division, subject } 
+        }),
+      ]
+    );
+
+    const filename = `Defaulter_List_${threshold}%_${month || 'All'}_${year || new Date().getFullYear()}_${Date.now()}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function updateMonthlyAttendance(req, res, next) {
+  try {
+    await defaulterService.updateMonthlyAttendance();
+
+    await pool.query(
+      `INSERT INTO activity_logs 
+        (actor_role, actor_id, action, details, created_at) 
+       VALUES ('admin', ?, 'UPDATE_MONTHLY_ATTENDANCE', ?, NOW())`,
+      [req.session.user.id, JSON.stringify({ timestamp: new Date().toISOString() })]
+    );
+
+    return res.json({
+      message: 'Monthly attendance updated successfully',
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+

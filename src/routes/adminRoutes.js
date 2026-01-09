@@ -16,6 +16,9 @@ import {
   deleteAllData,
   clearAttendanceHistory,
   triggerAutoMapping,
+  getDefaulterList,
+  downloadDefaulterList,
+  updateMonthlyAttendance,
 } from "../controllers/adminController.js";
 import { requireAuth, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -50,5 +53,10 @@ router.get("/attendance/backup/:id", downloadAttendanceBackup);
 router.post("/delete-all-data", deleteAllData);
 router.post("/attendance/clear-history", clearAttendanceHistory);
 router.post("/auto-map-students", triggerAutoMapping);
+
+// Defaulter management routes
+router.get("/defaulters", getDefaulterList);
+router.get("/defaulters/download", downloadDefaulterList);
+router.post("/attendance/update-monthly", updateMonthlyAttendance);
 
 export default router;

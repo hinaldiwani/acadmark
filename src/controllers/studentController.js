@@ -1,5 +1,6 @@
 import pool from "../../config/db.js";
 import { getStudentStats } from "../services/attendanceService.js";
+import defaulterService from "../services/defaulterService.js";
 
 const CAMPUS_LAT = parseFloat(process.env.CAMPUS_LATITUDE || "19.0760");
 const CAMPUS_LNG = parseFloat(process.env.CAMPUS_LONGITUDE || "72.8777");
@@ -37,6 +38,9 @@ export async function studentDashboard(req, res, next) {
     // Get attendance stats
     const stats = await getStudentStats(studentId);
 
+    // Get defaulter status
+    const defaulterStatus = await defaulterService.getStudentDefaulterStatus(studentId);
+
     // Get monthly summary
     const [monthlySummary] = await pool.query(
       `SELECT 
@@ -69,9 +73,17 @@ export async function studentDashboard(req, res, next) {
         absentCount: stats.absent,
         percentage: stats.percentage,
       },
+      defaulterStatus: {
+        isDefaulter: defaulterStatus.isDefaulter,
+        defaulterSubjects: defaulterStatus.defaulterSubjects,
+        message: defaulterStatus.isDefaulter
+          ? "⚠️ You are a defaulter! Your attendance is below 75%."
+          : "✅ Your attendance is good. Keep it up!",
+      },
       recentAttendance: stats.recentSessions || [],
       monthlySummary: monthlySummary || [],
       subjectBreakdown: stats.subjectBreakdown || [],
+      defaulterDetails: defaulterStatus.details,
     });
   } catch (error) {
     return next(error);

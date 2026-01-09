@@ -1,4 +1,5 @@
 import pool from "../../config/db.js";
+import defaulterService from "../services/defaulterService.js";
 import {
   getMappedStudents,
   createAttendanceSession,
@@ -471,3 +472,121 @@ export async function exportAttendanceExcel(req, res, next) {
     return next(error);
   }
 }
+
+// Teacher Defaulter List Functions
+
+export async function teacherGetDefaulterList(req, res, next) {
+  try {
+    const teacherId = req.session.user.id;
+    const { month, year, type = 'monthly', threshold = 75 } = req.query;
+
+    // Get teacher's details to filter by their stream/subject
+    const [teacher] = await pool.query(
+      `SELECT stream, subject FROM teacher_details_db WHERE teacher_id = ?`,
+      [teacherId]
+    );
+
+    if (!teacher || teacher.length === 0) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    const { stream, subject } = teacher[0];
+
+    let defaulters;
+    if (type === 'overall') {
+      defaulters = await defaulterService.getOverallDefaulters({
+        stream,
+        subject,
+        threshold: parseFloat(threshold)
+      });
+    } else {
+      defaulters = await defaulterService.getDefaulterList({
+        month: month ? parseInt(month) : undefined,
+        year: year ? parseInt(year) : undefined,
+        stream,
+        subject,
+        threshold: parseFloat(threshold)
+      });
+    }
+
+    return res.json({
+      defaulters,
+      count: defaulters.length,
+      threshold: parseFloat(threshold),
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function teacherDownloadDefaulterList(req, res, next) {
+  try {
+    const teacherId = req.session.user.id;
+    const { month, year, type = 'monthly', threshold = 75 } = req.query;
+
+    // Get teacher's details
+    const [teacher] = await pool.query(
+      `SELECT stream, subject FROM teacher_details_db WHERE teacher_id = ?`,
+      [teacherId]
+    );
+
+    if (!teacher || teacher.length === 0) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    const { stream, subject } = teacher[0];
+
+    let defaulters;
+    if (type === 'overall') {
+      defaulters = await defaulterService.getOverallDefaulters({
+        stream,
+        subject,
+        threshold: parseFloat(threshold)
+      });
+    } else {
+      defaulters = await defaulterService.getDefaulterList({
+        month: month ? parseInt(month) : undefined,
+        year: year ? parseInt(year) : undefined,
+        stream,
+        subject,
+        threshold: parseFloat(threshold)
+      });
+    }
+
+    if (defaulters.length === 0) {
+      return res.status(404).json({ message: 'No defaulters found' });
+    }
+
+    const workbook = await defaulterService.generateDefaulterExcel(defaulters, {
+      month: month ? parseInt(month) : undefined,
+      year: year ? parseInt(year) : undefined,
+      type,
+      threshold: parseFloat(threshold),
+    });
+
+    // Save to history
+    await defaulterService.saveDefaulterHistory(
+      defaulters,
+      teacherId,
+      'teacher'
+    );
+
+    // Log activity
+    await buildActivityPayload('DOWNLOAD_DEFAULTER_LIST', teacherId, {
+      count: defaulters.length,
+      threshold: parseFloat(threshold),
+      filters: { month, year, stream, subject },
+    });
+
+    const filename = `Defaulter_List_${subject}_${threshold}%_${month || 'All'}_${year || new Date().getFullYear()}_${Date.now()}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    return next(error);
+  }
+}
+
