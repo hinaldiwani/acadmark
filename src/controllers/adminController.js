@@ -408,42 +408,9 @@ export async function getDefaulterList(req, res, next) {
 
     let defaulters;
     if (type === 'overall') {
-      defaulters = await defaulterService.getOverallDefaulters({ 
-        stream, 
-        division, 
-        year,
-        threshold: parseFloat(threshold)
-      });
-    } else {
-      defaulters = await defaulterService.getDefaulterList({
-        month: month ? parseInt(month) : undefined,
-        year: year ? parseInt(year) : undefined,
+      defaulters = await defaulterService.getOverallDefaulters({
         stream,
         division,
-        subject,
-        threshold: parseFloat(threshold)
-      });
-    }
-
-    return res.json({
-      defaulters,
-      count: defaulters.length,
-      threshold: parseFloat(threshold),
-    });
-  } catch (error) {
-    return next(error);
-  }
-}
-
-export async function downloadDefaulterList(req, res, next) {
-  try {
-    const { month, year, stream, division, subject, type = 'monthly', threshold = 75 } = req.query;
-
-    let defaulters;
-    if (type === 'overall') {
-      defaulters = await defaulterService.getOverallDefaulters({ 
-        stream, 
-        division, 
         year,
         threshold: parseFloat(threshold)
       });
@@ -459,7 +426,55 @@ export async function downloadDefaulterList(req, res, next) {
     }
 
     if (defaulters.length === 0) {
-      return res.status(404).json({ message: 'No defaulters found' });
+      return res.json({
+        defaulters: [],
+        count: 0,
+        threshold: parseFloat(threshold),
+        message: 'No defaulters found. This could mean either no students are below the threshold, or no attendance data exists yet.'
+      });
+    }
+
+    return res.json({
+      defaulters,
+      count: defaulters.length,
+      threshold: parseFloat(threshold),
+    });
+  } catch (error) {
+    console.error('Defaulter list error:', error);
+    return res.status(500).json({
+      message: 'Failed to generate defaulter list. Please ensure attendance has been marked for students.',
+      error: error.message
+    });
+  }
+}
+
+export async function downloadDefaulterList(req, res, next) {
+  try {
+    const { month, year, stream, division, subject, type = 'monthly', threshold = 75 } = req.query;
+
+    let defaulters;
+    if (type === 'overall') {
+      defaulters = await defaulterService.getOverallDefaulters({
+        stream,
+        division,
+        year,
+        threshold: parseFloat(threshold)
+      });
+    } else {
+      defaulters = await defaulterService.getDefaulterList({
+        month: month ? parseInt(month) : undefined,
+        year: year ? parseInt(year) : undefined,
+        stream,
+        division,
+        subject,
+        threshold: parseFloat(threshold)
+      });
+    }
+
+    if (defaulters.length === 0) {
+      return res.status(404).json({
+        message: 'No defaulters found. This could mean either no students are below the threshold, or no attendance data exists yet. Please ensure attendance has been marked for students.'
+      });
     }
 
     const workbook = await defaulterService.generateDefaulterExcel(defaulters, {
@@ -483,10 +498,10 @@ export async function downloadDefaulterList(req, res, next) {
        VALUES ('admin', ?, 'DOWNLOAD_DEFAULTER_LIST', ?, NOW())`,
       [
         req.session.user.id,
-        JSON.stringify({ 
-          count: defaulters.length, 
+        JSON.stringify({
+          count: defaulters.length,
           threshold: parseFloat(threshold),
-          filters: { month, year, stream, division, subject } 
+          filters: { month, year, stream, division, subject }
         }),
       ]
     );

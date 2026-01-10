@@ -172,7 +172,7 @@ export async function getStudentStats(studentId) {
 export async function logAttendanceToAggregate(records, sessionMeta) {
   if (!records?.length) return;
 
-  const values = records.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, NOW())').join(',');
+  const values = records.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())').join(',');
   const params = records.flatMap((record) => [
     sessionMeta.sessionId,
     sessionMeta.teacherId,
@@ -182,13 +182,95 @@ export async function logAttendanceToAggregate(records, sessionMeta) {
     sessionMeta.stream,
     sessionMeta.division,
     record.status,
+    sessionMeta.sessionDate,
   ]);
 
   await pool.query(
     `INSERT INTO attendance_records 
-      (session_id, teacher_id, student_id, subject, year, stream, division, status, marked_at) 
+      (session_id, teacher_id, student_id, subject, year, stream, division, status, session_date, marked_at) 
      VALUES ${values}`,
     params
   );
+
+  // Update attendance statistics tables
+  await updateAttendanceStats(records, sessionMeta);
+}
+
+export async function updateAttendanceStats(records, sessionMeta) {
+  if (!records?.length) return;
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const month = sessionMeta.sessionDate.getMonth() + 1; // 1-12
+    const year_value = sessionMeta.sessionDate.getFullYear();
+
+    for (const record of records) {
+      // Get student details
+      const [studentData] = await connection.query(
+        'SELECT student_name, roll_no FROM student_details_db WHERE student_id = ?',
+        [record.studentId]
+      );
+
+      if (studentData.length === 0) continue;
+
+      const student = studentData[0];
+
+      // Update monthly_attendance_summary
+      await connection.query(`
+        INSERT INTO monthly_attendance_summary 
+          (student_id, student_name, roll_no, year, stream, division, subject, 
+           month, year_value, total_lectures, attended_lectures, attendance_percentage, is_defaulter)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          total_lectures = total_lectures + 1,
+          attended_lectures = attended_lectures + IF(VALUES(attended_lectures) > 0, 1, 0),
+          attendance_percentage = ROUND((attended_lectures / total_lectures) * 100, 2),
+          is_defaulter = IF(ROUND((attended_lectures / total_lectures) * 100, 2) < 75, TRUE, FALSE),
+          last_updated = CURRENT_TIMESTAMP
+      `, [
+        record.studentId,
+        student.student_name,
+        student.roll_no,
+        sessionMeta.year,
+        sessionMeta.stream,
+        sessionMeta.division,
+        sessionMeta.subject,
+        month,
+        year_value,
+        record.status === 'P' ? 1 : 0,
+        0, // attendance_percentage placeholder
+        false // is_defaulter placeholder
+      ]);
+
+      // Update student_attendance_stats
+      await connection.query(`
+        INSERT INTO student_attendance_stats 
+          (student_id, subject, total_lectures, attended_lectures, attendance_percentage, is_defaulter)
+        VALUES (?, ?, 1, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          total_lectures = total_lectures + 1,
+          attended_lectures = attended_lectures + IF(VALUES(attended_lectures) > 0, 1, 0),
+          attendance_percentage = ROUND((attended_lectures / total_lectures) * 100, 2),
+          is_defaulter = IF(ROUND((attended_lectures / total_lectures) * 100, 2) < 75, TRUE, FALSE),
+          last_updated = CURRENT_TIMESTAMP
+      `, [
+        record.studentId,
+        sessionMeta.subject,
+        record.status === 'P' ? 1 : 0,
+        0, // attendance_percentage placeholder
+        false // is_defaulter placeholder
+      ]);
+    }
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error updating attendance stats:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
