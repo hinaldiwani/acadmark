@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middlewares/authMiddleware.js";
+import notificationService from "../services/notificationService.js";
 import {
   teacherDashboard,
   mappedStudents,
@@ -13,6 +14,7 @@ import {
   exportAttendanceExcel,
   teacherGetDefaulterList,
   teacherDownloadDefaulterList,
+  getStreamsAndDivisions,
 } from "../controllers/teacherController.js";
 
 const router = Router();
@@ -21,6 +23,7 @@ router.use(requireAuth, requireRole("teacher"));
 
 router.get("/dashboard", teacherDashboard);
 router.get("/students", mappedStudents);
+router.get("/streams", getStreamsAndDivisions);
 router.post("/attendance/start", startAttendance);
 router.post("/attendance/end", endAttendance);
 router.post("/attendance/manual", manualAttendance);
@@ -33,5 +36,10 @@ router.post("/attendance/export-excel", exportAttendanceExcel);
 // Defaulter management routes
 router.get("/defaulters", teacherGetDefaulterList);
 router.get("/defaulters/download", teacherDownloadDefaulterList);
+
+// Real-time updates via Server-Sent Events
+router.get("/live-updates", (req, res) => {
+  notificationService.addConnection(req.session.user.id, 'teacher', res, req);
+});
 
 export default router;

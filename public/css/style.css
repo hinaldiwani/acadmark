@@ -186,7 +186,7 @@ thead th {
   letter-spacing: 0.04em;
 }
 
-tbody tr + tr {
+tbody tr+tr {
   border-top: 1px solid var(--color-border);
 }
 
@@ -255,6 +255,7 @@ tbody td {
     transform: translateY(10px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -375,7 +376,7 @@ tbody td {
   transition: transform var(--transition);
 }
 
-.toggle input:checked + span {
+.toggle input:checked+span {
   transform: translateX(24px);
 }
 
@@ -416,11 +417,9 @@ tbody td {
 .attendance-bar span {
   display: block;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    var(--color-primary) 0%,
-    var(--color-accent) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--color-primary) 0%,
+      var(--color-accent) 100%);
   transition: width var(--transition);
 }
 
@@ -490,5 +489,38 @@ tbody td {
   .content-panel {
     order: 1;
     padding: 1.5rem;
+  }
+}
+
+/* Tab Styles for Defaulter Modal */
+.tab-btn {
+  color: var(--color-muted);
+  position: relative;
+}
+
+.tab-btn.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary) !important;
+  font-weight: 600;
+}
+
+.tab-btn:hover:not(.active) {
+  color: var(--color-text);
+  background: var(--color-primary-soft);
+}
+
+.tab-content {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

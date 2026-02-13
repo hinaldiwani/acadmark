@@ -498,43 +498,149 @@ signoutLink?.addEventListener("click", async (event) => {
   }
 });
 
-// Defaulter List Generation
+// Defaulter List Generation Modal
+const defaulterModal = document.querySelector("[data-defaulter-modal]");
+const defaulterForm = document.querySelector("[data-defaulter-form]");
+const defaulterCancelButton = document.querySelector("[data-defaulter-cancel]");
+const defaulterNextButton = document.querySelector("[data-defaulter-next]");
+const defaulterPrevButton = document.querySelector("[data-defaulter-prev]");
+const defaulterGenerateButton = document.querySelector("[data-defaulter-generate]");
+const tabButtons = document.querySelectorAll("[data-defaulter-tab]");
+const tabContents = document.querySelectorAll("[data-tab-content]");
+
+const tabs = ["year", "stream", "division", "month", "percentage"];
+let currentTabIndex = 0;
+
+// Open modal
 const generateDefaultersButton = document.querySelector("[data-generate-defaulters]");
 generateDefaultersButton?.addEventListener("click", async () => {
-  // Ask user for threshold
-  const threshold = prompt("Enter minimum attendance percentage (0-100):", "75");
+  // Populate streams and divisions
+  try {
+    const data = await apiFetch("/api/admin/stats");
+    const streamSelect = document.getElementById("defaulterStream");
+    const divisionSelect = document.getElementById("defaulterDivision");
 
-  if (threshold === null) return; // User cancelled
+    // Populate streams
+    if (data.streams) {
+      streamSelect.innerHTML = '<option value="">Select stream...</option><option value="ALL">All Streams</option>';
+      data.streams.forEach(stream => {
+        const option = document.createElement("option");
+        option.value = stream;
+        option.textContent = stream;
+        streamSelect.appendChild(option);
+      });
+    }
 
-  const thresholdNum = parseFloat(threshold);
-  if (isNaN(thresholdNum) || thresholdNum < 0 || thresholdNum > 100) {
-    showToast({
-      title: "Invalid Input",
-      message: "Please enter a valid percentage between 0 and 100",
-      type: "error",
-    });
+    // Populate divisions
+    if (data.divisions) {
+      divisionSelect.innerHTML = '<option value="">Select division...</option><option value="ALL">All Divisions</option>';
+      data.divisions.forEach(division => {
+        const option = document.createElement("option");
+        option.value = division;
+        option.textContent = division;
+        divisionSelect.appendChild(option);
+      });
+    }
+  } catch (error) {
+    console.error("Failed to load streams/divisions:", error);
+  }
+
+  // Reset to first tab
+  currentTabIndex = 0;
+  showTab(currentTabIndex);
+  defaulterModal?.showModal();
+});
+
+// Tab navigation
+function showTab(index) {
+  currentTabIndex = index;
+
+  // Update tab buttons
+  tabButtons.forEach((btn, i) => {
+    if (i === index) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+
+  // Update tab content
+  tabContents.forEach((content, i) => {
+    if (i === index) {
+      content.style.display = "block";
+      content.classList.add("active");
+    } else {
+      content.style.display = "none";
+      content.classList.remove("active");
+    }
+  });
+
+  // Update button visibility
+  defaulterPrevButton.style.display = index > 0 ? "block" : "none";
+  defaulterNextButton.style.display = index < tabs.length - 1 ? "block" : "none";
+  defaulterGenerateButton.style.display = index === tabs.length - 1 ? "block" : "none";
+}
+
+// Tab button clicks
+tabButtons.forEach((btn, index) => {
+  btn.addEventListener("click", () => {
+    showTab(index);
+  });
+});
+
+// Next button
+defaulterNextButton?.addEventListener("click", () => {
+  const currentTab = tabs[currentTabIndex];
+  const currentField = document.querySelector(`[data-tab-content="${currentTab}"] select, [data-tab-content="${currentTab}"] input`);
+
+  if (currentField && !currentField.checkValidity()) {
+    currentField.reportValidity();
     return;
   }
 
-  // Optional filters
-  const month = prompt("Enter month (1-12, or leave blank for all months):", "");
-  const year = prompt("Enter year (or leave blank for current year):", new Date().getFullYear().toString());
-  const stream = prompt("Enter stream (or leave blank for all streams):", "");
-  const division = prompt("Enter division (or leave blank for all divisions):", "");
+  if (currentTabIndex < tabs.length - 1) {
+    showTab(currentTabIndex + 1);
+  }
+});
+
+// Previous button
+defaulterPrevButton?.addEventListener("click", () => {
+  if (currentTabIndex > 0) {
+    showTab(currentTabIndex - 1);
+  }
+});
+
+// Cancel button
+defaulterCancelButton?.addEventListener("click", () => {
+  defaulterModal?.close();
+  defaulterForm?.reset();
+});
+
+// Form submission
+defaulterForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const formData = new FormData(defaulterForm);
+  const year = formData.get("year");
+  const stream = formData.get("stream");
+  const division = formData.get("division");
+  const month = formData.get("month");
+  const threshold = formData.get("threshold");
 
   // Build query parameters
   const params = new URLSearchParams({
-    threshold: thresholdNum,
+    threshold: parseFloat(threshold),
     type: 'monthly'
   });
 
-  if (month && !isNaN(parseInt(month))) params.append('month', month);
-  if (year) params.append('year', year);
-  if (stream) params.append('stream', stream);
-  if (division) params.append('division', division);
+  if (month && month !== "ALL") params.append('month', month);
+  if (year && year !== "ALL") params.append('year', year);
+  if (stream && stream !== "ALL") params.append('stream', stream);
+  if (division && division !== "ALL") params.append('division', division);
 
   try {
-    toggleLoading(true);
+    toggleLoading(defaulterGenerateButton, true);
+    defaulterModal?.close();
 
     // Fetch the Excel file
     const response = await fetch(`/api/admin/defaulters/download?${params.toString()}`, {
@@ -552,7 +658,11 @@ generateDefaultersButton?.addEventListener("click", async () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Defaulter_List_${thresholdNum}%_${month || 'All'}_${year}.xlsx`;
+
+    const monthName = month === "ALL" ? "All" : month || "All";
+    const yearName = year === "ALL" ? "All" : year || "All";
+    a.download = `Defaulter_List_${threshold}%_${monthName}_${yearName}.xlsx`;
+
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -560,9 +670,11 @@ generateDefaultersButton?.addEventListener("click", async () => {
 
     showToast({
       title: "Success",
-      message: `Defaulter list generated with ${thresholdNum}% threshold`,
+      message: `Defaulter list generated with ${threshold}% threshold`,
       type: "success",
     });
+
+    defaulterForm?.reset();
   } catch (error) {
     showToast({
       title: "Unable to generate defaulter list",
@@ -570,11 +682,74 @@ generateDefaultersButton?.addEventListener("click", async () => {
       type: "error",
     });
   } finally {
-    toggleLoading(false);
+    toggleLoading(defaulterGenerateButton, false);
   }
 });
+
+// Close modal on backdrop click
+defaulterModal?.addEventListener("click", (e) => {
+  if (e.target === defaulterModal) {
+    defaulterModal.close();
+    defaulterForm?.reset();
+  }
+});
+
+// Setup live updates with Server-Sent Events
+function setupLiveUpdates() {
+  const eventSource = new EventSource('/api/admin/live-updates');
+
+  eventSource.addEventListener('attendance_marked', (event) => {
+    const data = JSON.parse(event.data);
+    showToast({
+      title: "Attendance Marked",
+      message: `${data.teacherName} marked attendance for ${data.subject} - ${data.year} ${data.stream} ${data.division} (${data.present} present, ${data.absent} absent)`,
+      type: "info",
+    });
+    // Refresh stats to show updated numbers
+    loadStats();
+    loadActivity();
+  });
+
+  eventSource.addEventListener('data_import', (event) => {
+    const data = JSON.parse(event.data);
+    showToast({
+      title: "Data Imported",
+      message: `${data.studentsCount} students, ${data.teachersCount} teachers imported`,
+      type: "success",
+    });
+    loadStats();
+    loadActivity();
+  });
+
+  eventSource.addEventListener('defaulter_generated', (event) => {
+    const data = JSON.parse(event.data);
+    showToast({
+      title: "Defaulter List Generated",
+      message: `${data.count} defaulters found (${data.threshold}% threshold)`,
+      type: "info",
+    });
+    loadActivity();
+  });
+
+  eventSource.addEventListener('stats_update', (event) => {
+    loadStats();
+  });
+
+  eventSource.onerror = (error) => {
+    console.error('SSE connection error:', error);
+    eventSource.close();
+    // Retry connection after 5 seconds
+    setTimeout(setupLiveUpdates, 5000);
+  };
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    eventSource.close();
+  });
+}
 
 updateSteps();
 setupUploads();
 loadStats();
 loadActivity();
+setupLiveUpdates();

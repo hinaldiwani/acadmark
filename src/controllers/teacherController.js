@@ -1,5 +1,6 @@
 import pool from "../../config/db.js";
 import defaulterService from "../services/defaulterService.js";
+import notificationService from "../services/notificationService.js";
 import {
   getMappedStudents,
   createAttendanceSession,
@@ -51,6 +52,31 @@ export async function teacherDashboard(req, res, next) {
       },
       streams: Array.isArray(streams) ? streams.map(s => s.stream) : [],
       divisions: Array.isArray(divisions) ? divisions.map(d => d.division) : [],
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getStreamsAndDivisions(req, res, next) {
+  try {
+    // Get distinct streams from student records
+    const [streamsList] = await pool.query(
+      `SELECT DISTINCT stream FROM student_details_db 
+       WHERE stream IS NOT NULL AND stream != ''
+       ORDER BY stream`
+    );
+
+    // Get distinct divisions from student records
+    const [divisionsList] = await pool.query(
+      `SELECT DISTINCT division FROM student_details_db 
+       WHERE division IS NOT NULL AND division != ''
+       ORDER BY division`
+    );
+
+    return res.json({
+      streams: streamsList.map(s => s.stream),
+      divisions: divisionsList.map(d => d.division),
     });
   } catch (error) {
     return next(error);
@@ -301,6 +327,20 @@ export async function endAttendance(req, res, next) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [filename, sessionId, teacherId, subject, year, stream, division, startedAt, JSON.stringify(studentRecords), fileContent]
     );
+
+    // Send real-time notification
+    notificationService.notifyAttendanceMarked({
+      teacherId,
+      teacherName,
+      subject,
+      year,
+      stream,
+      division,
+      present: summary.present,
+      absent: summary.absent,
+      total: summary.present + summary.absent,
+      sessionId
+    });
 
     return res.json({
       message: "Attendance recorded",
@@ -682,7 +722,7 @@ export async function teacherGetDefaulterList(req, res, next) {
 export async function teacherDownloadDefaulterList(req, res, next) {
   try {
     const teacherId = req.session.user.id;
-    const { month, year, type = 'monthly', threshold = 75 } = req.query;
+    const { month, year, stream, division, subject, type = 'monthly', threshold = 75 } = req.query;
 
     // Get teacher's details
     const [teacher] = await pool.query(
@@ -694,27 +734,37 @@ export async function teacherDownloadDefaulterList(req, res, next) {
       return res.status(404).json({ message: 'Teacher not found' });
     }
 
-    const { stream, subject } = teacher[0];
+    const teacherStream = teacher[0].stream;
+    const teacherSubject = teacher[0].subject;
+
+    // Use provided filters or fall back to teacher's assigned values
+    const filterStream = stream || teacherStream;
+    const filterSubject = subject || teacherSubject;
 
     let defaulters;
     if (type === 'overall') {
       defaulters = await defaulterService.getOverallDefaulters({
-        stream,
-        subject,
+        stream: filterStream,
+        division,
+        year,
+        subject: filterSubject,
         threshold: parseFloat(threshold)
       });
     } else {
       defaulters = await defaulterService.getDefaulterList({
         month: month ? parseInt(month) : undefined,
         year: year ? parseInt(year) : undefined,
-        stream,
-        subject,
+        stream: filterStream,
+        division,
+        subject: filterSubject,
         threshold: parseFloat(threshold)
       });
     }
 
     if (defaulters.length === 0) {
-      return res.status(404).json({ message: 'No defaulters found' });
+      return res.status(404).json({
+        message: 'No defaulters found. This could mean either no students are below the threshold, or no attendance data exists yet.'
+      });
     }
 
     const workbook = await defaulterService.generateDefaulterExcel(defaulters, {
@@ -735,10 +785,10 @@ export async function teacherDownloadDefaulterList(req, res, next) {
     await buildActivityPayload('DOWNLOAD_DEFAULTER_LIST', teacherId, {
       count: defaulters.length,
       threshold: parseFloat(threshold),
-      filters: { month, year, stream, subject },
+      filters: { month, year, stream: filterStream, division, subject: filterSubject },
     });
 
-    const filename = `Defaulter_List_${subject}_${threshold}%_${month || 'All'}_${year || new Date().getFullYear()}_${Date.now()}.xlsx`;
+    const filename = `Defaulter_List_${threshold}%_${month || 'All'}_${year || new Date().getFullYear()}_${Date.now()}.xlsx`;
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

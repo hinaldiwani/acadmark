@@ -58,6 +58,11 @@ router.post("/auto-map-students", triggerAutoMapping);
 // Defaulter management routes
 router.get("/defaulters", getDefaulterList);
 router.get("/defaulters/download", downloadDefaulterList);
+
+// Real-time updates via Server-Sent Events
+router.get("/live-updates", (req, res) => {
+  notificationService.addConnection(req.session.user.id, 'admin', res, req);
+});
 router.post("/attendance/update-monthly", updateMonthlyAttendance);
 
 export default router;

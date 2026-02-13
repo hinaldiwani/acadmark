@@ -816,97 +816,177 @@ async function loadAttendanceHistory() {
 }
 
 function initDefaulterButton() {
-  const defaulterButton = document.querySelector("[data-generate-defaulters]");
-  if (!defaulterButton) return;
+  const defaulterModal = document.querySelector("[data-defaulter-modal]");
+  const defaulterForm = document.querySelector("[data-defaulter-form]");
+  const defaulterCancelButton = document.querySelector("[data-defaulter-cancel]");
+  const defaulterNextButton = document.querySelector("[data-defaulter-next]");
+  const defaulterPrevButton = document.querySelector("[data-defaulter-prev]");
+  const defaulterGenerateButton = document.querySelector("[data-defaulter-generate]");
+  const tabButtons = document.querySelectorAll("[data-defaulter-tab]");
+  const tabContents = document.querySelectorAll("[data-tab-content]");
 
-  defaulterButton.addEventListener("click", async () => {
+  const tabs = ["year", "stream", "division", "month", "percentage"];
+  let currentTabIndex = 0;
+
+  // Open modal
+  const generateDefaultersButton = document.querySelector("[data-generate-defaulters]");
+  if (!generateDefaultersButton) return;
+
+  generateDefaultersButton.addEventListener("click", async () => {
+    // Populate streams and divisions
     try {
-      // Prompt for threshold
-      const thresholdInput = prompt(
-        "Enter the minimum attendance percentage threshold (0-100):",
-        "75"
-      );
+      const response = await fetch("/api/teacher/streams", {
+        credentials: "include",
+      });
 
-      if (thresholdInput === null) {
-        return; // User cancelled
-      }
+      if (response.ok) {
+        const data = await response.json();
+        const streamSelect = document.getElementById("defaulterStream");
+        const divisionSelect = document.getElementById("defaulterDivision");
 
-      const threshold = parseFloat(thresholdInput);
+        // Populate streams
+        if (data.streams) {
+          streamSelect.innerHTML = '<option value="">Select stream...</option><option value="ALL">All Streams</option>';
+          data.streams.forEach(stream => {
+            const option = document.createElement("option");
+            option.value = stream;
+            option.textContent = stream;
+            streamSelect.appendChild(option);
+          });
+        }
 
-      if (isNaN(threshold) || threshold < 0 || threshold > 100) {
-        showToast({
-          title: "Invalid Input",
-          message: "Please enter a valid percentage between 0 and 100.",
-          type: "danger",
-        });
-        return;
-      }
-
-      // Optional filters
-      const month = prompt(
-        "Enter month (1-12) or leave blank for all months:",
-        ""
-      );
-      const year = prompt(
-        "Enter year (e.g., 2024) or leave blank for current year:",
-        ""
-      );
-
-      // Build query parameters
-      const params = new URLSearchParams();
-      params.append("threshold", threshold.toString());
-
-      if (month && month.trim() !== "") {
-        const monthNum = parseInt(month);
-        if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12) {
-          params.append("month", monthNum.toString());
+        // Populate divisions
+        if (data.divisions) {
+          divisionSelect.innerHTML = '<option value="">Select division...</option><option value="ALL">All Divisions</option>';
+          data.divisions.forEach(division => {
+            const option = document.createElement("option");
+            option.value = division;
+            option.textContent = division;
+            divisionSelect.appendChild(option);
+          });
         }
       }
+    } catch (error) {
+      console.error("Failed to load streams/divisions:", error);
+    }
 
-      if (year && year.trim() !== "") {
-        const yearNum = parseInt(year);
-        if (!isNaN(yearNum)) {
-          params.append("year", yearNum.toString());
-        }
+    // Reset to first tab
+    currentTabIndex = 0;
+    showTab(currentTabIndex);
+    defaulterModal?.showModal();
+  });
+
+  // Tab navigation
+  function showTab(index) {
+    currentTabIndex = index;
+
+    // Update tab buttons
+    tabButtons.forEach((btn, i) => {
+      if (i === index) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
       }
+    });
 
-      // Show loading state
-      defaulterButton.disabled = true;
-      defaulterButton.textContent = "⏳ Generating...";
+    // Update tab content
+    tabContents.forEach((content, i) => {
+      if (i === index) {
+        content.style.display = "block";
+        content.classList.add("active");
+      } else {
+        content.style.display = "none";
+        content.classList.remove("active");
+      }
+    });
+
+    // Update button visibility
+    if (defaulterPrevButton) defaulterPrevButton.style.display = index > 0 ? "block" : "none";
+    if (defaulterNextButton) defaulterNextButton.style.display = index < tabs.length - 1 ? "block" : "none";
+    if (defaulterGenerateButton) defaulterGenerateButton.style.display = index === tabs.length - 1 ? "block" : "none";
+  }
+
+  // Tab button clicks
+  tabButtons.forEach((btn, index) => {
+    btn.addEventListener("click", () => {
+      showTab(index);
+    });
+  });
+
+  // Next button
+  defaulterNextButton?.addEventListener("click", () => {
+    const currentTab = tabs[currentTabIndex];
+    const currentField = document.querySelector(`[data-tab-content="${currentTab}"] select, [data-tab-content="${currentTab}"] input`);
+
+    if (currentField && !currentField.checkValidity()) {
+      currentField.reportValidity();
+      return;
+    }
+
+    if (currentTabIndex < tabs.length - 1) {
+      showTab(currentTabIndex + 1);
+    }
+  });
+
+  // Previous button
+  defaulterPrevButton?.addEventListener("click", () => {
+    if (currentTabIndex > 0) {
+      showTab(currentTabIndex - 1);
+    }
+  });
+
+  // Cancel button
+  defaulterCancelButton?.addEventListener("click", () => {
+    defaulterModal?.close();
+    defaulterForm?.reset();
+  });
+
+  // Form submission
+  defaulterForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(defaulterForm);
+    const year = formData.get("year");
+    const stream = formData.get("stream");
+    const division = formData.get("division");
+    const month = formData.get("month");
+    const threshold = formData.get("threshold");
+
+    // Build query parameters
+    const params = new URLSearchParams({
+      threshold: parseFloat(threshold),
+    });
+
+    if (month && month !== "ALL") params.append('month', month);
+    if (year && year !== "ALL") params.append('year', year);
+    if (stream && stream !== "ALL") params.append('stream', stream);
+    if (division && division !== "ALL") params.append('division', division);
+
+    try {
+      toggleLoading(defaulterGenerateButton, true);
+      defaulterModal?.close();
 
       // Fetch the Excel file
-      const response = await fetch(
-        `/api/teacher/defaulters/download?${params.toString()}`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
+      const response = await fetch(`/api/teacher/defaulters/download?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include'
+      });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate defaulter list");
+        const error = await response.json().catch(() => ({ message: 'Failed to generate defaulter list' }));
+        throw new Error(error.message);
       }
 
-      // Get filename from Content-Disposition header
-      const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = `defaulters_threshold_${threshold}.xlsx`;
-
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(
-          /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
-        );
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, "");
-        }
-      }
-
-      // Create blob and download
+      // Download file
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
+
+      const monthName = month === "ALL" ? "All" : month || "All";
+      const yearName = year === "ALL" ? "All" : year || "All";
+      a.download = `Defaulter_List_${threshold}%_${monthName}_${yearName}.xlsx`;
+
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -914,21 +994,85 @@ function initDefaulterButton() {
 
       showToast({
         title: "Success",
-        message: "Defaulter list downloaded successfully!",
+        message: `Defaulter list generated with ${threshold}% threshold`,
         type: "success",
       });
+
+      defaulterForm?.reset();
     } catch (error) {
-      console.error("Error generating defaulter list:", error);
       showToast({
-        title: "Error",
-        message: error.message || "Failed to generate defaulter list",
+        title: "Unable to generate defaulter list",
+        message: error.message,
         type: "danger",
       });
     } finally {
-      // Reset button state
-      defaulterButton.disabled = false;
-      defaulterButton.textContent = "📊 Generate Defaulter List";
+      toggleLoading(defaulterGenerateButton, false);
     }
+  });
+
+  // Close modal on backdrop click
+  defaulterModal?.addEventListener("click", (e) => {
+    if (e.target === defaulterModal) {
+      defaulterModal.close();
+      defaulterForm?.reset();
+    }
+  });
+}
+
+// Setup live updates with Server-Sent Events
+function setupLiveUpdates() {
+  const eventSource = new EventSource('/api/teacher/live-updates');
+
+  eventSource.addEventListener('attendance_marked', (event) => {
+    const data = JSON.parse(event.data);
+    // Only show if it's from another teacher
+    if (teacherData && data.teacherId !== teacherData.id) {
+      showToast({
+        title: "Attendance Marked",
+        message: `${data.teacherName} marked attendance for ${data.subject} - ${data.year} ${data.stream} ${data.division}`,
+        type: "info",
+      });
+    }
+    // Refresh dashboard to show updated stats
+    loadDashboard();
+  });
+
+  eventSource.addEventListener('data_import', (event) => {
+    const data = JSON.parse(event.data);
+    showToast({
+      title: "Data Updated",
+      message: `Student/Teacher data has been updated`,
+      type: "info",
+    });
+    loadDashboard();
+  });
+
+  eventSource.addEventListener('defaulter_generated', (event) => {
+    const data = JSON.parse(event.data);
+    if (data.role === 'teacher') {
+      showToast({
+        title: "Defaulter List Generated",
+        message: `${data.count} defaulters found`,
+        type: "info",
+      });
+    }
+    loadActivity();
+  });
+
+  eventSource.addEventListener('stats_update', (event) => {
+    loadDashboard();
+  });
+
+  eventSource.onerror = (error) => {
+    console.error('SSE connection error:', error);
+    eventSource.close();
+    // Retry connection after 5 seconds
+    setTimeout(setupLiveUpdates, 5000);
+  };
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    eventSource.close();
   });
 }
 
@@ -940,6 +1084,7 @@ function bootstrap() {
   initDefaulterButton();
   loadDashboard();
   loadActivity();
+  setupLiveUpdates();
 }
 
 bootstrap();

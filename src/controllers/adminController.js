@@ -5,6 +5,7 @@ import ExcelJS from "exceljs";
 
 import pool from "../../config/db.js";
 import defaulterService from "../services/defaulterService.js";
+import notificationService from "../services/notificationService.js";
 
 import {
   parseStudentImport,
@@ -123,6 +124,15 @@ export async function confirmImport(req, res, next) {
     }
 
     req.session.importQueue = { students: [], teachers: [] };
+
+    // Notify about data import
+    notificationService.notifyDataImport({
+      adminId: req.session.user.id,
+      adminName: req.session.user.name,
+      studentsCount: results.students.inserted,
+      teachersCount: results.teachers.inserted,
+      mappingsCount: results.mappings.inserted
+    });
 
     return res.json({
       message: "Import confirmed successfully",
@@ -547,6 +557,16 @@ export async function downloadDefaulterList(req, res, next) {
       req.session.user.id,
       'admin'
     );
+
+    // Notify about defaulter generation
+    notificationService.notifyDefaulterGenerated({
+      userId: req.session.user.id,
+      userName: req.session.user.name,
+      role: 'admin',
+      count: defaulters.length,
+      threshold: parseFloat(threshold),
+      filters: { month, year, stream, division, subject, type }
+    });
 
     // Log activity
     await pool.query(
