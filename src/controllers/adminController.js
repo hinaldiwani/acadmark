@@ -45,7 +45,7 @@ export async function handleStudentImport(req, res, next) {
     return res.json({
       message: "Student file processed successfully",
       total: students.length,
-      preview: students.slice(0, 5),
+      preview: students,
     });
   } catch (error) {
     return next(error);
@@ -71,7 +71,7 @@ export async function handleTeacherImport(req, res, next) {
     return res.json({
       message: "Teacher file processed successfully",
       total: teachers.length,
-      preview: teachers.slice(0, 5),
+      preview: teachers,
     });
   } catch (error) {
     return next(error);
@@ -159,16 +159,35 @@ export async function fetchDashboardStats(req, res, next) {
       `SELECT COUNT(*) as count FROM teacher_details_db`
     );
 
-    const [streams] = await pool.query(
+    // Get distinct streams from student records
+    const [streamsList] = await pool.query(
+      `SELECT DISTINCT stream FROM student_details_db 
+       WHERE stream IS NOT NULL AND stream != ''
+       ORDER BY stream`
+    );
+
+    // Get distinct divisions from student records
+    const [divisionsList] = await pool.query(
+      `SELECT DISTINCT division FROM student_details_db 
+       WHERE division IS NOT NULL AND division != ''
+       ORDER BY division`
+    );
+
+    // Get stream-division combinations with student counts
+    const [streamDivisionCounts] = await pool.query(
       `SELECT stream, division, COUNT(*) as students
        FROM student_details_db
-       GROUP BY stream, division`
+       WHERE stream IS NOT NULL AND division IS NOT NULL
+       GROUP BY stream, division
+       ORDER BY stream, division`
     );
 
     return res.json({
       students: studentCount?.[0]?.count || 0,
       teachers: teacherCount?.[0]?.count || 0,
-      streams: streams || [],
+      streams: streamsList.map(s => s.stream),
+      divisions: divisionsList.map(d => d.division),
+      streamDivisionCounts: streamDivisionCounts || [],
     });
   } catch (error) {
     return next(error);
@@ -177,6 +196,7 @@ export async function fetchDashboardStats(req, res, next) {
 
 export async function downloadTemplate(req, res) {
   const { type } = req.params;
+  const { stream, division, year } = req.query;
   const allowed = ["students", "teachers"];
 
   if (!allowed.includes(type)) {
@@ -198,12 +218,31 @@ export async function downloadTemplate(req, res) {
         { header: "Division", key: "division", width: 12 },
       ];
 
+      // Build query with optional filters
+      let query = `SELECT student_id, student_name, roll_no, year, stream, division
+                   FROM student_details_db
+                   WHERE 1=1`;
+      const params = [];
+
+      if (stream && stream !== 'ALL') {
+        query += ` AND stream = ?`;
+        params.push(stream);
+      }
+
+      if (division && division !== 'ALL') {
+        query += ` AND division = ?`;
+        params.push(division);
+      }
+
+      if (year && year !== 'ALL') {
+        query += ` AND year = ?`;
+        params.push(year);
+      }
+
+      query += ` ORDER BY year, stream, division, student_id`;
+
       // Fetch student data from database
-      const [students] = await pool.query(
-        `SELECT student_id, student_name, roll_no, year, stream, division
-         FROM student_details_db
-         ORDER BY year, stream, division, roll_no`
-      );
+      const [students] = await pool.query(query, params);
 
       // Add rows
       if (students && Array.isArray(students)) {
@@ -258,9 +297,27 @@ export async function downloadTemplate(req, res) {
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
+
+    // Generate filename based on filters
+    let filename = type;
+    if (type === "students" && (stream || division || year)) {
+      const parts = [];
+      if (year && year !== 'ALL') parts.push(year);
+      if (stream && stream !== 'ALL') parts.push(stream);
+      if (division && division !== 'ALL') parts.push(division);
+
+      // Add "All" labels for filters
+      if (year === 'ALL') parts.push('All_Years');
+      if (stream === 'ALL') parts.push('All_Streams');
+      if (division === 'ALL') parts.push('All_Divisions');
+
+      filename = parts.length > 0 ? parts.join('_') + '_students' : 'students';
+    }
+    filename += `_${new Date().toISOString().split('T')[0]}.xlsx`;
+
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${type}_data_${new Date().toISOString().split('T')[0]}.xlsx"`
+      `attachment; filename="${filename}"`
     );
 
     // Write to response

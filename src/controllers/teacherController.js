@@ -153,6 +153,155 @@ export async function endAttendance(req, res, next) {
       absent: summary.absent,
     });
 
+    // Get teacher name for Excel file
+    const [teacherInfo] = await pool.query(
+      `SELECT name FROM teacher_details_db WHERE teacher_id = ?`,
+      [teacherId]
+    );
+    const teacherName = teacherInfo?.[0]?.name || "Teacher";
+
+    // Save session to attendance_backup table for history with Excel file
+    const startedAt = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const datePart = `${pad(startedAt.getDate())}-${pad(startedAt.getMonth() + 1)}-${startedAt.getFullYear()}`;
+    const timePart = `${pad(startedAt.getHours())}-${pad(startedAt.getMinutes())}-${pad(startedAt.getSeconds())}`;
+    const subjectPart = (subject || "session").replace(/[^a-z0-9-_ ]/gi, "").replace(/\s+/g, "_");
+    const filename = `${datePart}_${timePart}_${subjectPart}_attendance_record.xlsx`;
+
+    // Get student details for records
+    const studentIds = formatted.map(f => f.studentId);
+    const placeholders = studentIds.map(() => '?').join(',');
+    const [students] = await pool.query(
+      `SELECT student_id, student_name, roll_no FROM student_details_db WHERE student_id IN (${placeholders}) ORDER BY student_id ASC`,
+      studentIds
+    );
+
+    // Build records array with student details in ascending order by roll number
+    const studentRecords = students.map(student => {
+      const attendanceItem = formatted.find(item => item.studentId === student.student_id);
+      return {
+        rollNo: student.roll_no || '',
+        studentId: student.student_id,
+        name: student.student_name || 'Unknown',
+        status: attendanceItem?.status || 'A'
+      };
+    });
+
+    // Generate Excel file
+    const XLSX = await import("xlsx-js-style");
+    const wb = XLSX.default.utils.book_new();
+    const data = [];
+
+    // College header - Row 1
+    data.push([
+      "Sheth N.K.T.T. College of Commerce & Sheth J.T.T. College of Arts (Autonomous) Thane West - 400601",
+    ]);
+    data.push([]); // Row 2 - Empty
+
+    // Session metadata - Row 3
+    data.push(["Attendance Report"]);
+    data.push([]); // Row 4 - Empty
+    data.push(["Session ID:", sessionId || ""]); // Row 5
+    data.push(["Subject:", subject || ""]); // Row 6
+    data.push(["Stream:", stream || ""]); // Row 7
+    data.push(["Division:", division || ""]); // Row 8
+    data.push(["Teacher:", teacherName]); // Row 9
+    data.push(["Date & Time:", startedAt.toLocaleString()]); // Row 10
+    data.push(["Present:", summary.present || 0]); // Row 11
+    data.push(["Absent:", summary.absent || 0]); // Row 12
+    data.push([]); // Row 13 - Empty
+
+    // Student attendance header - Row 14
+    data.push(["Roll No", "Student ID", "Name", "Status"]);
+
+    // Student rows - Starting from Row 15
+    studentRecords.forEach((student) => {
+      data.push([
+        student.rollNo || "",
+        student.studentId || "",
+        student.name || "",
+        student.status === "P" ? "Present" : "Absent",
+      ]);
+    });
+
+    // Create worksheet
+    const ws = XLSX.default.utils.aoa_to_sheet(data);
+
+    // Set column widths - increased to accommodate full college name
+    ws["!cols"] = [
+      { wch: 15 },
+      { wch: 18 },
+      { wch: 35 },
+      { wch: 15 },
+    ];
+
+    // Merge cells
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // Merge A1:D1 for college name
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 3 } }, // Merge A3:D3 for "Attendance Report"
+    ];
+
+    // Apply styling with text wrapping for college name (Row 1)
+    if (ws["A1"]) {
+      ws["A1"].s = {
+        font: { bold: true, sz: 14 },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      };
+    }
+
+    // Attendance Report styling (Row 3)
+    if (ws["A3"]) {
+      ws["A3"].s = {
+        font: { bold: true, sz: 12 },
+        alignment: { horizontal: "center" },
+      };
+    }
+
+    // Header row styling (Row 14)
+    ["A14", "B14", "C14", "D14"].forEach((cellRef) => {
+      if (ws[cellRef]) {
+        ws[cellRef].s = {
+          font: { bold: true },
+          fill: { fgColor: { rgb: "CCCCCC" } },
+          alignment: { horizontal: "center" },
+        };
+      }
+    });
+
+    // Color code student rows - students start from Row 15
+    studentRecords.forEach((student, idx) => {
+      const rowNum = 15 + idx; // Excel rows start from 15 for first student
+      const isPresent = student.status === "P";
+      const bgColor = isPresent ? "90EE90" : "FFB6C1"; // Light green for Present, Light pink for Absent
+
+      ["A", "B", "C", "D"].forEach((col) => {
+        const cellRef = col + rowNum;
+        if (ws[cellRef]) {
+          ws[cellRef].s = {
+            fill: { fgColor: { rgb: bgColor } },
+            alignment: { horizontal: col === "C" ? "left" : "center" },
+          };
+        }
+      });
+    });
+
+    XLSX.default.utils.book_append_sheet(wb, ws, "Attendance");
+
+    // Generate buffer and convert to base64 for storage
+    const excelBuffer = XLSX.default.write(wb, {
+      type: "buffer",
+      bookType: "xlsx",
+    });
+    const fileContent = excelBuffer.toString('base64');
+
+    // Save to database with file content
+    await pool.query(
+      `INSERT INTO attendance_backup 
+        (filename, session_id, teacher_id, subject, year, stream, division, started_at, records, file_content, saved_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [filename, sessionId, teacherId, subject, year, stream, division, startedAt, JSON.stringify(studentRecords), fileContent]
+    );
+
     return res.json({
       message: "Attendance recorded",
       summary,
@@ -295,12 +444,23 @@ export async function downloadAttendanceBackup(req, res, next) {
       return res.status(404).json({ message: "Backup not found" });
     }
 
-    res.setHeader("Content-Type", "text/csv");
+    if (!backup[0].file_content) {
+      return res.status(404).json({ message: "File content not found" });
+    }
+
+    // Decode base64 file content
+    const fileBuffer = Buffer.from(backup[0].file_content, 'base64');
+
+    // Set headers for Excel file
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="${backup[0].filename}"`
     );
-    return res.send(backup[0].file_content);
+    return res.send(fileBuffer);
   } catch (error) {
     return next(error);
   }

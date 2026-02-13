@@ -67,7 +67,7 @@ class DefaulterService {
             params.push(subject);
         }
 
-        query += ` ORDER BY mas.year_value DESC, mas.month DESC, mas.stream, mas.division, mas.roll_no`;
+        query += ` ORDER BY mas.year_value DESC, mas.month DESC, mas.stream, mas.division, mas.student_id`;
 
         const [rows] = await pool.query(query, params);
         return rows;
@@ -113,7 +113,7 @@ class DefaulterService {
             params.push(year);
         }
 
-        query += ` ORDER BY sd.stream, sd.division, sd.roll_no, sas.subject`;
+        query += ` ORDER BY sd.stream, sd.division, sd.student_id, sas.subject`;
 
         const [rows] = await pool.query(query, params);
         return rows;

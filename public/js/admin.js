@@ -220,10 +220,98 @@ confirmButton?.addEventListener("click", async () => {
 });
 
 const templateButtons = document.querySelectorAll("[data-download-template]");
+const exportStudentsModal = document.querySelector("[data-export-students-modal]");
+const exportStudentsForm = exportStudentsModal?.querySelector("form");
+const exportStreamSelect = document.querySelector("#exportStream");
+const exportDivisionSelect = document.querySelector("#exportDivision");
+const exportYearSelect = document.querySelector("#exportYear");
+const cancelExportButton = document.querySelector("[data-cancel-export]");
+
+let availableStreams = [];
+let availableDivisions = [];
+
+// Fetch available streams and divisions
+async function loadStreamsDivisions() {
+  try {
+    const data = await apiFetch("/api/admin/dashboard");
+    // Use the distinct streams and divisions arrays directly from the API
+    availableStreams = data.streams || [];
+    availableDivisions = data.divisions || [];
+
+    // Populate stream dropdown
+    if (exportStreamSelect) {
+      exportStreamSelect.innerHTML = '<option value="">Select stream...</option><option value="ALL">All Streams</option>';
+      availableStreams.forEach(stream => {
+        const option = document.createElement('option');
+        option.value = stream;
+        option.textContent = stream;
+        exportStreamSelect.appendChild(option);
+      });
+    }
+
+    // Populate division dropdown
+    if (exportDivisionSelect) {
+      exportDivisionSelect.innerHTML = '<option value="">Select division...</option><option value="ALL">All Divisions</option>';
+      availableDivisions.forEach(division => {
+        const option = document.createElement('option');
+        option.value = division;
+        option.textContent = division;
+        exportDivisionSelect.appendChild(option);
+      });
+    }
+  } catch (error) {
+    console.error('Failed to load streams/divisions:', error);
+  }
+}
+
 templateButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const type = button.dataset.downloadTemplate;
-    window.open(`/api/admin/templates/${type}`, "_blank");
+
+    if (type === "students") {
+      // Show modal for students export
+      loadStreamsDivisions();
+      exportStudentsModal?.showModal();
+    } else {
+      // Direct download for teachers
+      window.open(`/api/admin/templates/${type}`, "_blank");
+    }
+  });
+});
+
+cancelExportButton?.addEventListener("click", () => {
+  exportStudentsModal?.close();
+});
+
+exportStudentsForm?.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const stream = exportStreamSelect?.value;
+  const division = exportDivisionSelect?.value;
+  const year = exportYearSelect?.value;
+
+  if (!stream || !division || !year) {
+    showToast({
+      title: "Missing selection",
+      message: "Please select stream, division, and year",
+      type: "warning",
+    });
+    return;
+  }
+
+  // Build display message
+  const yearLabel = year === 'ALL' ? 'All Years' : year;
+  const streamLabel = stream === 'ALL' ? 'All Streams' : stream;
+  const divisionLabel = division === 'ALL' ? 'All Divisions' : division;
+
+  // Download with filters
+  window.open(`/api/admin/templates/students?stream=${encodeURIComponent(stream)}&division=${encodeURIComponent(division)}&year=${encodeURIComponent(year)}`, "_blank");
+  exportStudentsModal?.close();
+
+  showToast({
+    title: "Export started",
+    message: `Downloading students: ${yearLabel} - ${streamLabel} - ${divisionLabel}`,
+    type: "success",
   });
 });
 
@@ -415,9 +503,9 @@ const generateDefaultersButton = document.querySelector("[data-generate-defaulte
 generateDefaultersButton?.addEventListener("click", async () => {
   // Ask user for threshold
   const threshold = prompt("Enter minimum attendance percentage (0-100):", "75");
-  
+
   if (threshold === null) return; // User cancelled
-  
+
   const thresholdNum = parseFloat(threshold);
   if (isNaN(thresholdNum) || thresholdNum < 0 || thresholdNum > 100) {
     showToast({
@@ -439,7 +527,7 @@ generateDefaultersButton?.addEventListener("click", async () => {
     threshold: thresholdNum,
     type: 'monthly'
   });
-  
+
   if (month && !isNaN(parseInt(month))) params.append('month', month);
   if (year) params.append('year', year);
   if (stream) params.append('stream', stream);
@@ -447,7 +535,7 @@ generateDefaultersButton?.addEventListener("click", async () => {
 
   try {
     toggleLoading(true);
-    
+
     // Fetch the Excel file
     const response = await fetch(`/api/admin/defaulters/download?${params.toString()}`, {
       method: 'GET',

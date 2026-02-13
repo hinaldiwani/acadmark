@@ -579,11 +579,9 @@ async function handleEndSession() {
       body: JSON.stringify(payload),
     });
 
-    await exportAttendanceCsv(response.summary || { present: 0, absent: 0 });
-
     showToast({
       title: "Attendance saved",
-      message: "Session closed and report downloaded.",
+      message: "Session saved successfully. View it in the history tab.",
       type: "success",
     });
 

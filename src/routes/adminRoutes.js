@@ -47,6 +47,7 @@ router.post("/import/confirm", confirmImport);
 router.get("/import/preview", getImportPreview);
 router.get("/activity", fetchImportActivity);
 router.get("/stats", fetchDashboardStats);
+router.get("/dashboard", fetchDashboardStats);
 router.get("/templates/:type", downloadTemplate);
 router.get("/attendance/history", getAttendanceHistory);
 router.get("/attendance/backup/:id", downloadAttendanceBackup);

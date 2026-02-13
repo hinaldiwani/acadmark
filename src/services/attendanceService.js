@@ -6,7 +6,7 @@ export async function getMappedStudents(teacherId) {
      FROM student_details_db s
      INNER JOIN teacher_student_map m ON s.student_id = m.student_id
      WHERE m.teacher_id = ?
-     ORDER BY s.roll_no ASC`,
+     ORDER BY s.student_id ASC`,
     [teacherId]
   );
   return rows;

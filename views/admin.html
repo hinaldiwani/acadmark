@@ -136,7 +136,9 @@
         <div class="card" style="margin-top: 1.5rem; box-shadow: none; border-style: dashed" data-preview-area>
           <h3>Preview</h3>
           <p class="tagline">Uploaded rows appear here before confirm</p>
-          <div class="table-wrapper" style="margin-top: 1rem; display: none" data-preview-table>
+          <div class="table-wrapper"
+            style="margin-top: 1rem; display: none; max-height: 400px; overflow-y: auto; overflow-x: auto;"
+            data-preview-table>
             <table>
               <thead></thead>
               <tbody></tbody>
@@ -225,6 +227,50 @@
         </table>
       </div>
     </div>
+  </dialog>
+
+  <dialog data-export-students-modal style="
+        border: none;
+        border-radius: 16px;
+        padding: 2rem;
+        width: min(420px, 90vw);
+      ">
+    <form method="dialog" class="layout-grid" style="gap: 1rem">
+      <h3>Export Students</h3>
+      <p class="tagline">
+        Select stream and division to export specific students
+      </p>
+      <div class="input-group">
+        <label for="exportStream">Stream</label>
+        <select id="exportStream" name="stream" required>
+          <option value="">Select stream...</option>
+          <option value="ALL">All Streams</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="exportDivision">Division</label>
+        <select id="exportDivision" name="division" required>
+          <option value="">Select division...</option>
+          <option value="ALL">All Divisions</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="exportYear">Year</label>
+        <select id="exportYear" name="year" required>
+          <option value="">Select year...</option>
+          <option value="ALL">All Years</option>
+          <option value="FY">FY (First Year)</option>
+          <option value="SY">SY (Second Year)</option>
+          <option value="TY">TY (Third Year)</option>
+        </select>
+      </div>
+      <menu style="display: flex; gap: 0.75rem; justify-content: flex-end">
+        <button type="button" class="btn secondary" data-cancel-export>
+          Cancel
+        </button>
+        <button type="submit" class="btn" value="submit">Export</button>
+      </menu>
+    </form>
   </dialog>
 
   <div class="toast-stack" data-toast-stack></div>
