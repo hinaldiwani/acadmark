@@ -1,0 +1,41 @@
+Teacher_ID,Name,Subject,Stream
+TCH101,Dr. Rajesh Kumar,Advanced Database Systems,BSCIT
+TCH102,Prof. Meena Sharma,Full Stack Development,BSCIT
+TCH103,Dr. Suresh Patel,Linux Administration,BSCIT
+TCH104,Prof. Kavita Reddy,Network Security,BSCIT
+TCH105,Prof. Anil Verma,Software Project Management,BSCIT
+TCH106,Dr. Priya Deshmukh,Java Enterprise Edition,BSCIT
+TCH107,Prof. Vikram Nair,Mobile Computing,BSCIT
+TCH108,Prof. Sunita Joshi,Cloud Technologies,BSCIT
+TCH109,Dr. Ramesh Iyer,Information Security,BSCIT
+TCH110,Prof. Deepa Gupta,Web Services,BSCIT
+TCH201,Dr. Arun Kumar,Advanced Machine Learning,BSCDS
+TCH202,Prof. Lakshmi Sharma,Data Mining,BSCDS
+TCH203,Dr. Vijay Patel,Statistical Computing,BSCDS
+TCH204,Prof. Swati Reddy,Natural Language Processing,BSCDS
+TCH205,Prof. Naveen Verma,Big Data Technologies,BSCDS
+TCH206,Dr. Bhavna Desai,Neural Networks,BSCDS
+TCH207,Prof. Mahesh Nair,Data Warehousing,BSCDS
+TCH208,Prof. Rekha Joshi,Business Intelligence,BSCDS
+TCH209,Dr. Prakash Iyer,Time Series Analysis,BSCDS
+TCH210,Prof. Seema Gupta,Predictive Analytics,BSCDS
+TCH301,Dr. Ashok Singh,Financial Accounting,BSCCA
+TCH302,Prof. Geeta Sharma,Cost Accounting,BSCCA
+TCH303,Dr. Ravi Patel,Auditing,BSCCA
+TCH304,Prof. Nisha Reddy,Taxation,BSCCA
+TCH305,Prof. Mukesh Verma,Management Accounting,BSCCA
+TCH306,Dr. Anjana Deshmukh,Corporate Law,BSCCA
+TCH307,Prof. Sandeep Nair,E-Accounting,BSCCA
+TCH308,Prof. Kiran Joshi,Financial Management,BSCCA
+TCH309,Dr. Sanjay Iyer,Banking Operations,BSCCA
+TCH310,Prof. Madhuri Gupta,Investment Analysis,BSCCA
+TCH401,Dr. Rajiv Kumar,Artificial Intelligence,BSCAIML
+TCH402,Prof. Sapna Sharma,Machine Learning Algorithms,BSCAIML
+TCH403,Dr. Deepak Patel,Computer Vision,BSCAIML
+TCH404,Prof. Alka Reddy,Robotics,BSCAIML
+TCH405,Prof. Amit Verma,Deep Reinforcement Learning,BSCAIML
+TCH406,Dr. Preeti Desai,Cognitive Computing,BSCAIML
+TCH407,Prof. Rohit Nair,Speech Recognition,BSCAIML
+TCH408,Prof. Sonia Joshi,Expert Systems,BSCAIML
+TCH409,Dr. Vikas Iyer,Knowledge Representation,BSCAIML
+TCH410,Prof. Ritu Gupta,AI Ethics and Policy,BSCAIML

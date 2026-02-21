@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AcadMark · Admin Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+
+  <body>
+    <div class="shell">
+      <aside class="sidebar-panel">
+        <div class="brand" style="margin-bottom: 2rem">
+          <div class="brand-mark">AM</div>
+          <div>
+            <h1>AcadMark</h1>
+            <p class="tagline">Admin Console</p>
+          </div>
+        </div>
+
+        <nav class="sidebar">
+          <a href="#" class="btn secondary" data-nav="overview">Dashboard</a>
+          <a href="/" class="btn ghost" data-signout>Sign out</a>
+        </nav>
+
+        <div class="card" style="margin-top: 2rem">
+          <h3>Import Checklist</h3>
+          <ul
+            style="
+              margin-top: 1rem;
+              display: grid;
+              gap: 0.75rem;
+              list-style: none;
+            "
+            data-import-steps
+          >
+            <li>1 · Import Students</li>
+            <li>2 · Import Teachers</li>
+            <li>3 · Confirm Import</li>
+          </ul>
+        </div>
+      </aside>
+
+      <main class="content-panel layout-grid" style="gap: 1.5rem">
+        <header class="header" style="padding: 0">
+          <div>
+            <h2>Admin Dashboard</h2>
+            <p class="tagline">Manage college-wide attendance securely</p>
+          </div>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap">
+            <button class="btn secondary" data-view-history>
+              View History
+            </button>
+            <button
+              class="btn ghost"
+              data-delete-data
+              style="color: #dc3545; border-color: #dc3545"
+            >
+              Delete Data
+            </button>
+            <button class="btn ghost" data-refresh-dashboard>Refresh</button>
+          </div>
+        </header>
+
+        <section class="layout-grid three" data-dashboard-panels>
+          <div class="card">
+            <div class="stat">
+              <span class="stat-label">Total Students</span>
+              <span class="stat-value" data-stat="students">0</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="stat">
+              <span class="stat-label">Total Teachers</span>
+              <span class="stat-value" data-stat="teachers">0</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="stat">
+              <span class="stat-label">Streams & Divisions</span>
+              <span class="stat-value" data-stat="streams">0</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" data-import-section>
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              gap: 1rem;
+              flex-wrap: wrap;
+            "
+          >
+            <div>
+              <h3>Bulk Import</h3>
+              <p class="tagline">
+                Upload Excel/CSV sheets directly into the database
+              </p>
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap">
+              <button class="btn secondary" data-download-template="students">
+                Export Students
+              </button>
+              <button class="btn secondary" data-download-template="teachers">
+                Export Teachers
+              </button>
+              <button
+                class="btn"
+                data-generate-defaulters
+                style="background: #e74c3c; border-color: #e74c3c"
+              >
+                Generate Defaulter List
+              </button>
+            </div>
+          </div>
+
+          <div class="layout-grid two" style="margin-top: 1.5rem">
+            <form
+              class="card"
+              style="box-shadow: none; border-style: dashed"
+              data-upload-form="students"
+            >
+              <h3>Import Students</h3>
+              <p class="tagline">
+                Year, Stream, Division, Roll No, Name, Student ID
+              </p>
+              <input type="file" accept=".csv,.xlsx,.xls" hidden />
+              <button class="btn secondary" type="button" data-browse>
+                Choose file
+              </button>
+              <p class="tagline" data-file-name>No file selected</p>
+              <button class="btn" type="submit">Upload & review</button>
+            </form>
+
+            <form
+              class="card"
+              style="box-shadow: none; border-style: dashed"
+              data-upload-form="teachers"
+            >
+              <h3>Import Teachers</h3>
+              <p class="tagline">Name, Subject, Stream, Teacher ID</p>
+              <input type="file" accept=".csv,.xlsx,.xls" hidden />
+              <button class="btn secondary" type="button" data-browse>
+                Choose file
+              </button>
+              <p class="tagline" data-file-name>No file selected</p>
+              <button class="btn" type="submit">Upload & review</button>
+            </form>
+          </div>
+
+          <div
+            class="card"
+            style="margin-top: 1.5rem; box-shadow: none; border-style: dashed"
+            data-preview-area
+          >
+            <h3>Preview</h3>
+            <p class="tagline">Uploaded rows appear here before confirm</p>
+            <div
+              class="table-wrapper"
+              style="
+                margin-top: 1rem;
+                display: none;
+                max-height: 400px;
+                overflow-y: auto;
+                overflow-x: auto;
+              "
+              data-preview-table
+            >
+              <table>
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <button
+              class="btn"
+              style="margin-top: 1rem; display: none"
+              data-confirm-import
+            >
+              Confirm import
+            </button>
+          </div>
+        </section>
+
+        <section class="card" data-activity-section>
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              gap: 0.5rem;
+            "
+          >
+            <h3>Recent Activity</h3>
+            <div style="display: flex; gap: 0.5rem">
+              <button class="btn ghost" data-clear-activity>Clear</button>
+              <button class="btn ghost" data-refresh-activity>Refresh</button>
+            </div>
+          </div>
+          <div class="table-wrapper" style="margin-top: 1rem">
+            <table>
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Action</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody data-activity-body>
+                <tr>
+                  <td colspan="3">No activity yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Teacher Information Section -->
+        <section class="card" data-teachers-info-section>
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              gap: 0.5rem;
+            "
+          >
+            <div>
+              <h3>Teachers Information</h3>
+              <p class="tagline">
+                View teacher details, subjects, streams, divisions, and student
+                counts
+              </p>
+            </div>
+            <button class="btn ghost" data-refresh-teachers>Refresh</button>
+          </div>
+          <div
+            class="table-wrapper"
+            style="margin-top: 1rem; max-height: 500px; overflow-y: auto"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>Teacher ID</th>
+                  <th>Name</th>
+                  <th>Subject</th>
+                  <th>Year</th>
+                  <th>Stream</th>
+                  <th>Divisions</th>
+                  <th>Student Count</th>
+                </tr>
+              </thead>
+              <tbody data-teachers-info-body>
+                <tr>
+                  <td colspan="7">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Students Information Section -->
+        <section class="card" data-students-info-section>
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              gap: 1rem;
+              flex-wrap: wrap;
+            "
+          >
+            <div>
+              <h3>Students Information</h3>
+              <p class="tagline">
+                Filter students by stream and division to view details
+              </p>
+            </div>
+            <div
+              style="
+                display: flex;
+                gap: 0.75rem;
+                flex-wrap: wrap;
+                align-items: flex-end;
+              "
+            >
+              <div class="input-group" style="margin: 0; min-width: 150px">
+                <label for="filterYear" style="font-size: 0.875rem">Year</label>
+                <select id="filterYear" name="year" style="padding: 0.5rem">
+                  <option value="">Select year...</option>
+                  <option value="FY">FY (First Year)</option>
+                  <option value="SY">SY (Second Year)</option>
+                  <option value="TY">TY (Third Year)</option>
+                </select>
+              </div>
+              <div class="input-group" style="margin: 0; min-width: 150px">
+                <label for="filterStream" style="font-size: 0.875rem"
+                  >Stream</label
+                >
+                <select id="filterStream" name="stream" style="padding: 0.5rem">
+                  <option value="">Select stream...</option>
+                </select>
+              </div>
+              <div class="input-group" style="margin: 0; min-width: 150px">
+                <label for="filterDivision" style="font-size: 0.875rem"
+                  >Division</label
+                >
+                <select
+                  id="filterDivision"
+                  name="division"
+                  style="padding: 0.5rem"
+                >
+                  <option value="">Select division...</option>
+                </select>
+              </div>
+              <button
+                class="btn secondary"
+                data-load-students
+                style="height: fit-content"
+              >
+                Load Students
+              </button>
+            </div>
+          </div>
+
+          <!-- Subjects & Teachers Info -->
+          <div
+            style="
+              margin-top: 1.5rem;
+              display: grid;
+              gap: 1rem;
+              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            "
+            data-subjects-teachers-container
+            style="display: none"
+          >
+            <div
+              class="card"
+              style="box-shadow: none; border-style: dashed; padding: 1rem"
+            >
+              <h4 style="margin-bottom: 0.75rem">Subjects</h4>
+              <div data-subjects-list style="display: grid; gap: 0.5rem">
+                <p class="tagline">No subjects available</p>
+              </div>
+            </div>
+            <div
+              class="card"
+              style="box-shadow: none; border-style: dashed; padding: 1rem"
+            >
+              <h4 style="margin-bottom: 0.75rem">Teachers</h4>
+              <div data-teachers-list style="display: grid; gap: 0.5rem">
+                <p class="tagline">No teachers available</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Student Count Display -->
+          <div
+            style="margin-top: 1.5rem; display: none"
+            data-student-count-display
+          >
+            <p style="font-size: 1rem; font-weight: 500; margin: 0">
+              Total Students: <span data-student-count-value>0</span>
+            </p>
+          </div>
+
+          <!-- Students List -->
+          <div
+            class="table-wrapper"
+            style="
+              margin-top: 1rem;
+              max-height: 500px;
+              overflow-y: auto;
+              display: none;
+            "
+            data-students-info-table
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>Roll No</th>
+                  <th>Student ID</th>
+                  <th>Student Name</th>
+                  <th>Year</th>
+                  <th>Stream</th>
+                  <th>Division</th>
+                </tr>
+              </thead>
+              <tbody data-students-info-body>
+                <tr>
+                  <td colspan="6">
+                    Select stream and division to view students
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog
+      data-history-modal
+      style="
+        border: none;
+        border-radius: 16px;
+        padding: 2rem;
+        width: min(900px, 90vw);
+        max-height: 80vh;
+      "
+    >
+      <div class="layout-grid" style="gap: 1rem">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          "
+        >
+          <h3>Attendance History (All Records)</h3>
+          <div style="display: flex; gap: 0.75rem">
+            <button
+              type="button"
+              class="btn ghost"
+              data-clear-history
+              style="color: #dc3545; border-color: #dc3545"
+            >
+              Clear History
+            </button>
+            <button type="button" class="btn ghost" data-close-history>
+              Close
+            </button>
+          </div>
+        </div>
+        <div class="table-wrapper" style="max-height: 60vh; overflow-y: auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Teacher ID</th>
+                <th>Subject</th>
+                <th>Stream</th>
+                <th>Division</th>
+                <th>Saved</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody data-history-body>
+              <tr>
+                <td colspan="7">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog
+      data-export-students-modal
+      style="
+        border: none;
+        border-radius: 16px;
+        padding: 2rem;
+        width: min(420px, 90vw);
+      "
+    >
+      <form method="dialog" class="layout-grid" style="gap: 1rem">
+        <h3>Export Students</h3>
+        <p class="tagline">
+          Select stream and division to export specific students
+        </p>
+        <div class="input-group">
+          <label for="exportStream">Stream</label>
+          <select id="exportStream" name="stream" required>
+            <option value="">Select stream...</option>
+            <option value="ALL">All Streams</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="exportDivision">Division</label>
+          <select id="exportDivision" name="division" required>
+            <option value="">Select division...</option>
+            <option value="ALL">All Divisions</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="exportYear">Year</label>
+          <select id="exportYear" name="year" required>
+            <option value="">Select year...</option>
+            <option value="ALL">All Years</option>
+            <option value="FY">FY (First Year)</option>
+            <option value="SY">SY (Second Year)</option>
+            <option value="TY">TY (Third Year)</option>
+          </select>
+        </div>
+        <menu style="display: flex; gap: 0.75rem; justify-content: flex-end">
+          <button type="button" class="btn secondary" data-cancel-export>
+            Cancel
+          </button>
+          <button type="submit" class="btn" value="submit">Export</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog
+      data-defaulter-modal
+      style="
+        border: none;
+        border-radius: 16px;
+        padding: 2rem;
+        width: min(600px, 90vw);
+      "
+    >
+      <div class="layout-grid" style="gap: 1.5rem">
+        <div>
+          <h3>Generate Defaulter List</h3>
+          <p class="tagline">Configure defaulter selection criteria</p>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div
+          style="
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid #e0e0e0;
+            overflow-x: auto;
+          "
+        >
+          <button
+            type="button"
+            class="tab-btn active"
+            data-defaulter-tab="year"
+            style="
+              padding: 0.75rem 1.25rem;
+              border: none;
+              background: none;
+              cursor: pointer;
+              border-bottom: 3px solid transparent;
+              font-weight: 500;
+              transition: all 0.2s;
+            "
+          >
+            Year
+          </button>
+          <button
+            type="button"
+            class="tab-btn"
+            data-defaulter-tab="stream"
+            style="
+              padding: 0.75rem 1.25rem;
+              border: none;
+              background: none;
+              cursor: pointer;
+              border-bottom: 3px solid transparent;
+              font-weight: 500;
+              transition: all 0.2s;
+            "
+          >
+            Stream
+          </button>
+          <button
+            type="button"
+            class="tab-btn"
+            data-defaulter-tab="division"
+            style="
+              padding: 0.75rem 1.25rem;
+              border: none;
+              background: none;
+              cursor: pointer;
+              border-bottom: 3px solid transparent;
+              font-weight: 500;
+              transition: all 0.2s;
+            "
+          >
+            Division
+          </button>
+          <button
+            type="button"
+            class="tab-btn"
+            data-defaulter-tab="month"
+            style="
+              padding: 0.75rem 1.25rem;
+              border: none;
+              background: none;
+              cursor: pointer;
+              border-bottom: 3px solid transparent;
+              font-weight: 500;
+              transition: all 0.2s;
+            "
+          >
+            Month
+          </button>
+          <button
+            type="button"
+            class="tab-btn"
+            data-defaulter-tab="percentage"
+            style="
+              padding: 0.75rem 1.25rem;
+              border: none;
+              background: none;
+              cursor: pointer;
+              border-bottom: 3px solid transparent;
+              font-weight: 500;
+              transition: all 0.2s;
+            "
+          >
+            Percentage
+          </button>
+        </div>
+
+        <!-- Tab Content -->
+        <form
+          data-defaulter-form
+          class="layout-grid"
+          style="gap: 1rem; min-height: 200px"
+        >
+          <!-- Year Tab -->
+          <div class="tab-content active" data-tab-content="year">
+            <div class="input-group">
+              <label for="defaulterYear">Academic Year</label>
+              <select id="defaulterYear" name="year" required>
+                <option value="">Select year...</option>
+                <option value="ALL">All Years</option>
+                <option value="FY">FY (First Year)</option>
+                <option value="SY">SY (Second Year)</option>
+                <option value="TY">TY (Third Year)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Stream Tab -->
+          <div
+            class="tab-content"
+            data-tab-content="stream"
+            style="display: none"
+          >
+            <div class="input-group">
+              <label for="defaulterStream">Stream</label>
+              <select id="defaulterStream" name="stream" required>
+                <option value="">Select stream...</option>
+                <option value="ALL">All Streams</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Division Tab -->
+          <div
+            class="tab-content"
+            data-tab-content="division"
+            style="display: none"
+          >
+            <div class="input-group">
+              <label for="defaulterDivision">Division</label>
+              <select id="defaulterDivision" name="division" required>
+                <option value="">Select division...</option>
+                <option value="ALL">All Divisions</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Month Tab -->
+          <div
+            class="tab-content"
+            data-tab-content="month"
+            style="display: none"
+          >
+            <div class="input-group">
+              <label for="defaulterMonth">Month</label>
+              <select id="defaulterMonth" name="month" required>
+                <option value="">Select month...</option>
+                <option value="ALL">All Months</option>
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Percentage Tab -->
+          <div
+            class="tab-content"
+            data-tab-content="percentage"
+            style="display: none"
+          >
+            <div class="input-group">
+              <label for="defaulterPercentage"
+                >Minimum Attendance Percentage</label
+              >
+              <input
+                type="number"
+                id="defaulterPercentage"
+                name="threshold"
+                min="0"
+                max="100"
+                step="1"
+                value="75"
+                required
+                placeholder="Enter percentage (0-100)"
+              />
+              <p class="tagline" style="margin-top: 0.5rem">
+                Students below this percentage will be marked as defaulters
+              </p>
+            </div>
+          </div>
+
+          <!-- Navigation Buttons -->
+          <menu
+            style="
+              display: flex;
+              gap: 0.75rem;
+              justify-content: space-between;
+              margin-top: 1rem;
+            "
+          >
+            <div style="display: flex; gap: 0.75rem">
+              <button type="button" class="btn secondary" data-defaulter-cancel>
+                Cancel
+              </button>
+            </div>
+            <div style="display: flex; gap: 0.75rem">
+              <button
+                type="button"
+                class="btn ghost"
+                data-defaulter-prev
+                style="display: none"
+              >
+                Previous
+              </button>
+              <button type="button" class="btn secondary" data-defaulter-next>
+                Next
+              </button>
+              <button
+                type="submit"
+                class="btn"
+                data-defaulter-generate
+                style="
+                  display: none;
+                  background: #e74c3c;
+                  border-color: #e74c3c;
+                "
+              >
+                Generate List
+              </button>
+            </div>
+          </menu>
+        </form>
+      </div>
+    </dialog>
+
+    <div class="toast-stack" data-toast-stack></div>
+    <script type="module" src="/js/admin.js"></script>
+  </body>
+</html>

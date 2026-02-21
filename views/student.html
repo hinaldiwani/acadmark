@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AcadMark · Student Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar-panel">
+        <div class="brand" style="margin-bottom: 2rem">
+          <div class="brand-mark">AM</div>
+          <div>
+            <h1>AcadMark</h1>
+            <p class="tagline">Student Portal</p>
+          </div>
+        </div>
+
+        <nav class="sidebar">
+          <a href="#" class="btn ghost" data-signout>Sign out</a>
+        </nav>
+
+        <div class="card" style="margin-top: 2rem">
+          <h3>My Profile</h3>
+          <div
+            style="
+              margin-top: 1rem;
+              display: grid;
+              gap: 0.5rem;
+              font-size: 0.9rem;
+            "
+          >
+            <div><strong>ID:</strong> <span data-profile-id>–</span></div>
+            <div><strong>Name:</strong> <span data-profile-name>–</span></div>
+            <div>
+              <strong>Roll No:</strong> <span data-profile-roll>–</span>
+            </div>
+            <div>
+              <strong>Stream:</strong> <span data-profile-stream>–</span>
+            </div>
+            <div>
+              <strong>Division:</strong> <span data-profile-division>–</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content-panel layout-grid" style="gap: 1.5rem">
+        <header class="header" style="padding: 0">
+          <div>
+            <h2>Student Dashboard</h2>
+            <p class="tagline">Track your attendance progress</p>
+          </div>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap">
+            <button class="btn ghost" data-refresh>Refresh</button>
+          </div>
+        </header>
+
+        <section class="layout-grid three" data-summary>
+          <div class="card">
+            <div class="stat">
+              <span class="stat-label">Total Sessions</span>
+              <span class="stat-value" data-summary-sessions>0</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="stat">
+              <span class="stat-label">Present</span>
+              <span class="stat-value" data-summary-present>0</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="stat">
+              <span class="stat-label">Attendance %</span>
+              <span class="stat-value" data-summary-percentage>0%</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>Attendance Overview</h3>
+          <div style="margin-top: 1.5rem">
+            <div
+              style="
+                margin-bottom: 0.75rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              "
+            >
+              <span style="font-size: 0.9rem; color: var(--color-muted)"
+                >Your Progress</span
+              >
+              <span
+                style="font-size: 0.9rem; font-weight: 600"
+                data-progress-text
+                >0%</span
+              >
+            </div>
+            <div class="attendance-bar">
+              <span data-progress-bar style="width: 0%"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>Recent Attendance</h3>
+          <div class="table-wrapper" style="margin-top: 1rem">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Subject</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody data-attendance-body>
+                <tr>
+                  <td colspan="3">No attendance records yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>Monthly Summary</h3>
+          <div class="table-wrapper" style="margin-top: 1rem">
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Sessions</th>
+                  <th>Present</th>
+                  <th>Absent</th>
+                  <th>%</th>
+                </tr>
+              </thead>
+              <tbody data-monthly-body>
+                <tr>
+                  <td colspan="5">No data available.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast-stack" data-toast-stack></div>
+    <script type="module" src="/js/student.js"></script>
+  </body>
+</html>
