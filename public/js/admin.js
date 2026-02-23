@@ -191,9 +191,9 @@ confirmButton?.addEventListener("click", async () => {
   // Ask user if they want to clear existing data
   const clearExisting = confirm(
     "Do you want to CLEAR ALL existing data before importing?\n\n" +
-      "• Click OK to DELETE all existing students/teachers and import fresh data\n" +
-      "• Click Cancel to ADD/UPDATE the imported data to existing records\n\n" +
-      "Recommended: Choose OK for a clean import with only the uploaded data.",
+    "• Click OK to DELETE all existing students/teachers and import fresh data\n" +
+    "• Click Cancel to ADD/UPDATE the imported data to existing records\n\n" +
+    "Recommended: Choose OK for a clean import with only the uploaded data.",
   );
 
   toggleLoading(confirmButton, true);
@@ -393,21 +393,21 @@ closeHistoryButton?.addEventListener("click", () => {
 deleteDataButton?.addEventListener("click", async () => {
   const confirmed = confirm(
     "⚠️ WARNING: This will permanently delete ALL data including:\n\n" +
-      "• All students\n" +
-      "• All teachers\n" +
-      "• All attendance sessions and records\n" +
-      "• All student-teacher mappings\n" +
-      "• All activity logs\n\n" +
-      "CSV backup records will be preserved.\n\n" +
-      "This action CANNOT be undone. Are you absolutely sure?",
+    "• All students\n" +
+    "• All teachers\n" +
+    "• All attendance sessions and records\n" +
+    "• All student-teacher mappings\n" +
+    "• All activity logs\n\n" +
+    "CSV backup records will be preserved.\n\n" +
+    "This action CANNOT be undone. Are you absolutely sure?",
   );
 
   if (!confirmed) return;
 
   const doubleConfirmed = confirm(
     "This is your last chance to cancel.\n\n" +
-      "Type deletion will proceed in 3 seconds.\n\n" +
-      "Click OK to proceed with deletion or Cancel to abort.",
+    "Type deletion will proceed in 3 seconds.\n\n" +
+    "Click OK to proceed with deletion or Cancel to abort.",
   );
 
   if (!doubleConfirmed) return;
@@ -442,10 +442,10 @@ deleteDataButton?.addEventListener("click", async () => {
 clearHistoryButton?.addEventListener("click", async () => {
   const confirmed = confirm(
     "⚠️ WARNING: This will permanently delete ALL attendance history records including:\n\n" +
-      "• All saved Excel/CSV files\n" +
-      "• All download links\n" +
-      "• All backup attendance data\n\n" +
-      "This action CANNOT be undone. Are you sure you want to clear the history?",
+    "• All saved Excel/CSV files\n" +
+    "• All download links\n" +
+    "• All backup attendance data\n\n" +
+    "This action CANNOT be undone. Are you sure you want to clear the history?",
   );
 
   if (!confirmed) return;
@@ -500,9 +500,8 @@ async function loadAttendanceHistory() {
           <td>${item.division || "—"}</td>
           <td>${savedDate}</td>
           <td>
-            <a href="/api/admin/attendance/backup/${
-              item.id
-            }" class="btn ghost" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;" download>
+            <a href="/api/admin/attendance/backup/${item.id
+          }" class="btn ghost" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;" download>
               Download
             </a>
           </td>
@@ -866,34 +865,109 @@ const subjectsTeachersContainer = document.querySelector(
 const subjectsList = document.querySelector("[data-subjects-list]");
 const teachersList = document.querySelector("[data-teachers-list]");
 
-// Populate stream and division filters
-async function populateFilters() {
-  try {
-    const data = await apiFetch("/api/admin/dashboard");
+// Populate stream filters based on year
+async function populateStreamFilters(year) {
+  if (!filterStreamSelect) return;
 
-    if (filterStreamSelect) {
-      filterStreamSelect.innerHTML =
-        '<option value="">Select stream...</option>';
-      (data.streams || []).forEach((stream) => {
+  filterStreamSelect.innerHTML = '<option value="">Select stream...</option>';
+  filterStreamSelect.disabled = true;
+
+  if (!year) {
+    return;
+  }
+
+  try {
+    const data = await apiFetch(`/api/admin/streams-divisions?year=${encodeURIComponent(year)}`);
+
+    if (data.streams && data.streams.length > 0) {
+      data.streams.forEach((stream) => {
         const option = document.createElement("option");
         option.value = stream;
         option.textContent = stream;
         filterStreamSelect.appendChild(option);
       });
+      filterStreamSelect.disabled = false;
+    } else {
+      filterStreamSelect.innerHTML = '<option value="">No streams available</option>';
     }
+  } catch (error) {
+    console.error("Failed to populate stream filters:", error);
+    filterStreamSelect.innerHTML = '<option value="">Error loading streams</option>';
+  }
+}
 
-    if (filterDivisionSelect) {
-      filterDivisionSelect.innerHTML =
-        '<option value="">Select division...</option>';
-      (data.divisions || []).forEach((division) => {
+// Populate division filters based on year and stream
+async function populateDivisionFilters(year, stream) {
+  if (!filterDivisionSelect) return;
+
+  filterDivisionSelect.innerHTML = '<option value="">Select division...</option>';
+  filterDivisionSelect.disabled = true;
+
+  if (!year || !stream) {
+    return;
+  }
+
+  try {
+    const data = await apiFetch(
+      `/api/admin/streams-divisions?year=${encodeURIComponent(year)}&stream=${encodeURIComponent(stream)}`
+    );
+
+    if (data.divisions && data.divisions.length > 0) {
+      data.divisions.forEach((division) => {
         const option = document.createElement("option");
         option.value = division;
         option.textContent = division;
         filterDivisionSelect.appendChild(option);
       });
+      filterDivisionSelect.disabled = false;
+    } else {
+      filterDivisionSelect.innerHTML = '<option value="">No divisions available</option>';
     }
   } catch (error) {
-    console.error("Failed to populate filters:", error);
+    console.error("Failed to populate division filters:", error);
+    filterDivisionSelect.innerHTML = '<option value="">Error loading divisions</option>';
+  }
+}
+
+// Setup cascading filter listeners
+function setupStudentFilters() {
+  if (filterYearSelect) {
+    filterYearSelect.addEventListener("change", async () => {
+      const year = filterYearSelect.value;
+
+      // Reset stream and division
+      if (filterStreamSelect) {
+        filterStreamSelect.innerHTML = '<option value="">Select stream...</option>';
+        filterStreamSelect.disabled = !year;
+      }
+      if (filterDivisionSelect) {
+        filterDivisionSelect.innerHTML = '<option value="">Select division...</option>';
+        filterDivisionSelect.disabled = true;
+      }
+
+      // Load streams for selected year
+      if (year) {
+        await populateStreamFilters(year);
+      }
+    });
+  }
+
+  if (filterStreamSelect) {
+    filterStreamSelect.addEventListener("change", async () => {
+      const year = filterYearSelect?.value;
+      const stream = filterStreamSelect.value;
+
+      // Reset division
+      if (filterDivisionSelect) {
+        filterDivisionSelect.innerHTML = '<option value="">Select division...</option>';
+        filterDivisionSelect.disabled = !stream;
+      }
+
+      // Load divisions for selected year and stream
+      if (year && stream) {
+        await populateDivisionFilters(year, stream);
+      }
+    });
   }
 }
 
@@ -1022,4 +1096,4 @@ loadStats();
 loadActivity();
 setupLiveUpdates();
 loadTeachersInfo();
-populateFilters();
+setupStudentFilters();

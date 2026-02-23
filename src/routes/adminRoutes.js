@@ -21,6 +21,7 @@ import {
   updateMonthlyAttendance,
   getTeachersInfo,
   getStudentsInfo,
+  getStreamsDivisions,
 } from "../controllers/adminController.js";
 import { requireAuth, requireRole } from "../middlewares/authMiddleware.js";
 
@@ -64,6 +65,7 @@ router.get("/defaulters/download", downloadDefaulterList);
 // Teacher and Student information routes
 router.get("/teachers-info", getTeachersInfo);
 router.get("/students-info", getStudentsInfo);
+router.get("/streams-divisions", getStreamsDivisions);
 
 // Real-time updates via Server-Sent Events
 router.get("/live-updates", (req, res) => {

@@ -248,8 +248,9 @@ export async function updateAttendanceStats(records, sessionMeta) {
       // Update student_attendance_stats
       await connection.query(`
         INSERT INTO student_attendance_stats 
-          (student_id, subject, total_lectures, attended_lectures, attendance_percentage, is_defaulter)
-        VALUES (?, ?, 1, ?, ?, ?)
+          (student_id, student_name, roll_no, year, stream, division, subject, 
+           total_lectures, attended_lectures, attendance_percentage, is_defaulter)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           total_lectures = total_lectures + 1,
           attended_lectures = attended_lectures + IF(VALUES(attended_lectures) > 0, 1, 0),
@@ -258,6 +259,11 @@ export async function updateAttendanceStats(records, sessionMeta) {
           last_updated = CURRENT_TIMESTAMP
       `, [
         record.studentId,
+        student.student_name,
+        student.roll_no,
+        sessionMeta.year,
+        sessionMeta.stream,
+        sessionMeta.division,
         sessionMeta.subject,
         record.status === 'P' ? 1 : 0,
         0, // attendance_percentage placeholder

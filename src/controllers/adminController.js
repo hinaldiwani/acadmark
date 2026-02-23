@@ -52,7 +52,7 @@ export async function handleStudentImport(req, res, next) {
     return next(error);
   } finally {
     if (req.file) {
-      fs.rm(req.file.path, { force: true }, () => {});
+      fs.rm(req.file.path, { force: true }, () => { });
     }
   }
 }
@@ -78,7 +78,7 @@ export async function handleTeacherImport(req, res, next) {
     return next(error);
   } finally {
     if (req.file) {
-      fs.rm(req.file.path, { force: true }, () => {});
+      fs.rm(req.file.path, { force: true }, () => { });
     }
   }
 }
@@ -799,6 +799,54 @@ export async function getStudentsInfo(req, res, next) {
     });
   } catch (error) {
     console.error("Get students info error:", error);
+    return next(error);
+  }
+}
+
+// Get streams and divisions filtered by year and optionally stream
+export async function getStreamsDivisions(req, res, next) {
+  try {
+    const { year, stream } = req.query;
+
+    if (!year) {
+      return res.status(400).json({
+        message: "Year is required",
+      });
+    }
+
+    // Get distinct streams for the year
+    const [streamsList] = await pool.query(
+      `SELECT DISTINCT stream FROM student_details_db 
+       WHERE year = ? AND stream IS NOT NULL AND stream != ''
+       ORDER BY stream`,
+      [year]
+    );
+
+    // If stream is provided, get divisions for that year-stream combination
+    // Otherwise, get all divisions for the year
+    let divisionsQuery;
+    let queryParams;
+
+    if (stream) {
+      divisionsQuery = `SELECT DISTINCT division FROM student_details_db 
+                        WHERE year = ? AND stream = ? AND division IS NOT NULL AND division != ''
+                        ORDER BY division`;
+      queryParams = [year, stream];
+    } else {
+      divisionsQuery = `SELECT DISTINCT division FROM student_details_db 
+                        WHERE year = ? AND division IS NOT NULL AND division != ''
+                        ORDER BY division`;
+      queryParams = [year];
+    }
+
+    const [divisionsList] = await pool.query(divisionsQuery, queryParams);
+
+    return res.json({
+      streams: streamsList.map((s) => s.stream),
+      divisions: divisionsList.map((d) => d.division),
+    });
+  } catch (error) {
+    console.error("Get streams/divisions error:", error);
     return next(error);
   }
 }
