@@ -35,13 +35,17 @@ function updateSteps() {
 async function loadStats() {
   try {
     const data = await apiFetch("/api/admin/stats");
-    console.log('📊 Dashboard stats received from API:', data);
-    console.log('📊 Student count from API:', data.students);
+    console.log("📊 Dashboard stats received from API:", data);
+    console.log("📊 Student count from API:", data.students);
 
     statElements.forEach((stat) => {
       const key = stat.dataset.stat;
       if (key === "streams") {
+        // Display count of unique streams
         stat.textContent = `${data.streams?.length || 0}`;
+      } else if (key === "divisions") {
+        // Display count of unique divisions
+        stat.textContent = `${data.divisions?.length || 0}`;
       } else {
         stat.textContent = data[key] ?? 0;
         console.log(`📊 Setting ${key} stat to:`, data[key] ?? 0);
@@ -195,9 +199,9 @@ confirmButton?.addEventListener("click", async () => {
   // Ask user if they want to clear existing data
   const clearExisting = confirm(
     "Do you want to CLEAR ALL existing data before importing?\n\n" +
-    "• Click OK to DELETE all existing students/teachers and import fresh data\n" +
-    "• Click Cancel to ADD/UPDATE the imported data to existing records\n\n" +
-    "Recommended: Choose OK for a clean import with only the uploaded data.",
+      "• Click OK to DELETE all existing students/teachers and import fresh data\n" +
+      "• Click Cancel to ADD/UPDATE the imported data to existing records\n\n" +
+      "Recommended: Choose OK for a clean import with only the uploaded data.",
   );
 
   toggleLoading(confirmButton, true);
@@ -231,15 +235,11 @@ confirmButton?.addEventListener("click", async () => {
     await loadStats();
     await loadActivity();
 
-    // Refresh teacher and student info sections if they exist
-    const teachersSection = document.querySelector("[data-teachers-info]");
-    const studentsSection = document.querySelector("[data-students-info]");
-    if (teachersSection) {
-      await loadTeachersInfo();
-    }
-    if (studentsSection) {
-      await loadStudentsInfo();
-    }
+    // Always refresh teachers info table with the latest imported data
+    await loadTeachersInfo();
+
+    // Refresh stream filters so newly imported streams/divisions appear
+    await loadStreamsFromTeachers();
   } catch (error) {
     showToast({
       title: "Import failed",
@@ -397,21 +397,21 @@ closeHistoryButton?.addEventListener("click", () => {
 deleteDataButton?.addEventListener("click", async () => {
   const confirmed = confirm(
     "⚠️ WARNING: This will permanently delete ALL data including:\n\n" +
-    "• All students\n" +
-    "• All teachers\n" +
-    "• All attendance sessions and records\n" +
-    "• All student-teacher mappings\n" +
-    "• All activity logs\n\n" +
-    "CSV backup records will be preserved.\n\n" +
-    "This action CANNOT be undone. Are you absolutely sure?",
+      "• All students\n" +
+      "• All teachers\n" +
+      "• All attendance sessions and records\n" +
+      "• All student-teacher mappings\n" +
+      "• All activity logs\n\n" +
+      "CSV backup records will be preserved.\n\n" +
+      "This action CANNOT be undone. Are you absolutely sure?",
   );
 
   if (!confirmed) return;
 
   const doubleConfirmed = confirm(
     "This is your last chance to cancel.\n\n" +
-    "Type deletion will proceed in 3 seconds.\n\n" +
-    "Click OK to proceed with deletion or Cancel to abort.",
+      "Type deletion will proceed in 3 seconds.\n\n" +
+      "Click OK to proceed with deletion or Cancel to abort.",
   );
 
   if (!doubleConfirmed) return;
@@ -446,10 +446,10 @@ deleteDataButton?.addEventListener("click", async () => {
 clearHistoryButton?.addEventListener("click", async () => {
   const confirmed = confirm(
     "⚠️ WARNING: This will permanently delete ALL attendance history records including:\n\n" +
-    "• All saved Excel/CSV files\n" +
-    "• All download links\n" +
-    "• All backup attendance data\n\n" +
-    "This action CANNOT be undone. Are you sure you want to clear the history?",
+      "• All saved Excel/CSV files\n" +
+      "• All download links\n" +
+      "• All backup attendance data\n\n" +
+      "This action CANNOT be undone. Are you sure you want to clear the history?",
   );
 
   if (!confirmed) return;
@@ -504,8 +504,9 @@ async function loadAttendanceHistory() {
           <td>${item.division || "—"}</td>
           <td>${savedDate}</td>
           <td>
-            <a href="/api/admin/attendance/backup/${item.id
-          }" class="btn ghost" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;" download>
+            <a href="/api/admin/attendance/backup/${
+              item.id
+            }" class="btn ghost" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;" download>
               Download
             </a>
           </td>
@@ -877,10 +878,11 @@ async function loadStreamsFromTeachers() {
 
   try {
     // Load streams from student data instead of teacher data
-    const data = await apiFetch('/api/admin/student-streams');
+    const data = await apiFetch("/api/admin/student-streams");
 
     if (data.streams && data.streams.length > 0) {
-      filterStreamSelect.innerHTML = '<option value="">Select stream...</option>';
+      filterStreamSelect.innerHTML =
+        '<option value="">Select stream...</option>';
       data.streams.forEach((stream) => {
         const option = document.createElement("option");
         option.value = stream;
@@ -888,11 +890,13 @@ async function loadStreamsFromTeachers() {
         filterStreamSelect.appendChild(option);
       });
     } else {
-      filterStreamSelect.innerHTML = '<option value="">No streams available</option>';
+      filterStreamSelect.innerHTML =
+        '<option value="">No streams available</option>';
     }
   } catch (error) {
     console.error("Failed to load streams:", error);
-    filterStreamSelect.innerHTML = '<option value="">Error loading streams</option>';
+    filterStreamSelect.innerHTML =
+      '<option value="">Error loading streams</option>';
   }
 }
 
@@ -900,33 +904,34 @@ async function loadStreamsFromTeachers() {
 function populateSemestersByYear(year) {
   if (!filterSemesterSelect) return;
 
-  filterSemesterSelect.innerHTML = '<option value="">Select semester...</option>';
+  filterSemesterSelect.innerHTML =
+    '<option value="">Select semester...</option>';
 
   // Add All Semesters option
-  const allOption = document.createElement('option');
-  allOption.value = 'ALL';
-  allOption.textContent = 'All Semesters';
+  const allOption = document.createElement("option");
+  allOption.value = "ALL";
+  allOption.textContent = "All Semesters";
   filterSemesterSelect.appendChild(allOption);
 
   const semesterOptions = {
-    'FY': [
-      { value: 'Sem 1', label: 'Semester 1' },
-      { value: 'Sem 2', label: 'Semester 2' }
+    FY: [
+      { value: "Sem 1", label: "Semester 1" },
+      { value: "Sem 2", label: "Semester 2" },
     ],
-    'SY': [
-      { value: 'Sem 3', label: 'Semester 3' },
-      { value: 'Sem 4', label: 'Semester 4' }
+    SY: [
+      { value: "Sem 3", label: "Semester 3" },
+      { value: "Sem 4", label: "Semester 4" },
     ],
-    'TY': [
-      { value: 'Sem 5', label: 'Semester 5' },
-      { value: 'Sem 6', label: 'Semester 6' }
-    ]
+    TY: [
+      { value: "Sem 5", label: "Semester 5" },
+      { value: "Sem 6", label: "Semester 6" },
+    ],
   };
 
   const semesters = semesterOptions[year] || [];
 
   semesters.forEach((sem) => {
-    const option = document.createElement('option');
+    const option = document.createElement("option");
     option.value = sem.value;
     option.textContent = sem.label;
     filterSemesterSelect.appendChild(option);
@@ -937,7 +942,8 @@ function populateSemestersByYear(year) {
 async function populateDivisionFiltersFromTeachers(stream, year, semester) {
   if (!filterDivisionSelect) return;
 
-  filterDivisionSelect.innerHTML = '<option value="">Select division...</option>';
+  filterDivisionSelect.innerHTML =
+    '<option value="">Select division...</option>';
   filterDivisionSelect.disabled = true;
 
   if (!stream || !year || !semester) {
@@ -965,11 +971,13 @@ async function populateDivisionFiltersFromTeachers(stream, year, semester) {
       });
       filterDivisionSelect.disabled = false;
     } else {
-      filterDivisionSelect.innerHTML = '<option value="">No divisions available</option>';
+      filterDivisionSelect.innerHTML =
+        '<option value="">No divisions available</option>';
     }
   } catch (error) {
     console.error("Failed to populate division filters:", error);
-    filterDivisionSelect.innerHTML = '<option value="">Error loading divisions</option>';
+    filterDivisionSelect.innerHTML =
+      '<option value="">Error loading divisions</option>';
   }
 }
 
@@ -993,7 +1001,8 @@ function setupStudentFilters() {
         filterSemesterSelect.disabled = true;
       }
       if (filterDivisionSelect) {
-        filterDivisionSelect.innerHTML = '<option value="">Select division...</option>';
+        filterDivisionSelect.innerHTML =
+          '<option value="">Select division...</option>';
         filterDivisionSelect.disabled = true;
       }
     });
@@ -1008,10 +1017,12 @@ function setupStudentFilters() {
       if (filterSemesterSelect) {
         filterSemesterSelect.value = "";
         filterSemesterSelect.disabled = true;
-        filterSemesterSelect.innerHTML = '<option value="">Select semester...</option>';
+        filterSemesterSelect.innerHTML =
+          '<option value="">Select semester...</option>';
       }
       if (filterDivisionSelect) {
-        filterDivisionSelect.innerHTML = '<option value="">Select division...</option>';
+        filterDivisionSelect.innerHTML =
+          '<option value="">Select division...</option>';
         filterDivisionSelect.disabled = true;
       }
 
@@ -1034,7 +1045,8 @@ function setupStudentFilters() {
 
       // Reset division
       if (filterDivisionSelect) {
-        filterDivisionSelect.innerHTML = '<option value="">Select division...</option>';
+        filterDivisionSelect.innerHTML =
+          '<option value="">Select division...</option>';
         filterDivisionSelect.disabled = true;
       }
 
@@ -1145,8 +1157,8 @@ async function loadStudentsInfo() {
       studentsInfoTable.style.display = "block";
     }
 
-    const semesterLabel = semester === 'ALL' ? 'All Semesters' : semester;
-    const divisionLabel = division === 'ALL' ? 'All Divisions' : division;
+    const semesterLabel = semester === "ALL" ? "All Semesters" : semester;
+    const divisionLabel = division === "ALL" ? "All Divisions" : division;
 
     showToast({
       title: "Students loaded",

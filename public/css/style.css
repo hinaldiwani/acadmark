@@ -108,7 +108,9 @@ button {
   font-size: 0.95rem;
   background: var(--color-primary);
   color: #ffffff;
-  transition: transform var(--transition), box-shadow var(--transition);
+  transition:
+    transform var(--transition),
+    box-shadow var(--transition);
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.25);
 }
 
@@ -151,7 +153,9 @@ textarea {
   padding: 0.85rem 1rem;
   font-size: 1rem;
   background: var(--color-surface);
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
 }
 
 input:focus,
@@ -164,8 +168,16 @@ textarea:focus {
 
 .table-wrapper {
   overflow-x: auto;
+  overflow-y: auto;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+}
+
+.table-wrapper thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-primary-soft);
 }
 
 table {
@@ -186,7 +198,7 @@ thead th {
   letter-spacing: 0.04em;
 }
 
-tbody tr+tr {
+tbody tr + tr {
   border-top: 1px solid var(--color-border);
 }
 
@@ -376,7 +388,7 @@ tbody td {
   transition: transform var(--transition);
 }
 
-.toggle input:checked+span {
+.toggle input:checked + span {
   transform: translateX(24px);
 }
 
@@ -417,9 +429,11 @@ tbody td {
 .attendance-bar span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg,
-      var(--color-primary) 0%,
-      var(--color-accent) 100%);
+  background: linear-gradient(
+    90deg,
+    var(--color-primary) 0%,
+    var(--color-accent) 100%
+  );
   transition: width var(--transition);
 }
 
@@ -432,7 +446,9 @@ tbody td {
   font-weight: 600;
   font-size: 0.85rem;
   border: 1px solid transparent;
-  transition: filter var(--transition), transform var(--transition);
+  transition:
+    filter var(--transition),
+    transform var(--transition);
 }
 
 .status-pill[data-status="P"] {

@@ -735,11 +735,13 @@ export async function getTeachersInfo(req, res, next) {
         t.stream,
         t.semester,
         t.division as divisions,
-        COUNT(DISTINCT tsm.student_id) as student_count
+        (
+          SELECT COUNT(DISTINCT tsm.student_id)
+          FROM teacher_student_map tsm
+          WHERE tsm.teacher_id = t.teacher_id
+        ) as student_count
       FROM teacher_details_db t
-      LEFT JOIN teacher_student_map tsm ON t.teacher_id = tsm.teacher_id
-      GROUP BY t.teacher_id, t.year, t.stream, t.subject, t.name, t.semester, t.division
-      ORDER BY t.name, t.year, t.stream
+      ORDER BY t.name, t.year, t.stream, t.subject
     `;
 
     const [teachers] = await pool.query(query);
