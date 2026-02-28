@@ -117,7 +117,7 @@
             </div>
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap">
               <button class="btn secondary" data-download-template="students">
-                Export Students
+                View Students
               </button>
               <button class="btn secondary" data-download-template="teachers">
                 Export Teachers
@@ -498,13 +498,14 @@
         border: none;
         border-radius: 16px;
         padding: 2rem;
-        width: min(420px, 90vw);
+        width: min(600px, 90vw);
       "
     >
       <form method="dialog" class="layout-grid" style="gap: 1rem">
-        <h3>Export Students</h3>
+        <h3>View Students</h3>
         <p class="tagline">
-          Select stream and division to export specific students
+          Select stream, division, and year to view students. You can export the
+          displayed data as CSV.
         </p>
         <div class="input-group">
           <label for="exportStream">Stream</label>
@@ -534,8 +535,46 @@
           <button type="button" class="btn secondary" data-cancel-export>
             Cancel
           </button>
-          <button type="submit" class="btn" value="submit">Export</button>
+          <button type="submit" class="btn" value="submit">View</button>
         </menu>
+        <div
+          class="table-wrapper"
+          style="
+            margin-top: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+          "
+          data-students-view-table
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Roll No</th>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Year</th>
+                <th>Stream</th>
+                <th>Division</th>
+              </tr>
+            </thead>
+            <tbody data-students-view-body>
+              <tr>
+                <td colspan="6">
+                  Select filters and click View to see students.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button
+          type="button"
+          class="btn ghost"
+          style="margin-top: 1rem; display: none"
+          data-export-csv
+        >
+          Export as CSV
+        </button>
       </form>
     </dialog>
 

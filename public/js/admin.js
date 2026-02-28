@@ -1,36 +1,48 @@
 import { apiFetch, showToast, toggleLoading, formatDateTime } from "./main.js";
 
-const statElements = document.querySelectorAll("[data-stat]");
-const activityBody = document.querySelector("[data-activity-body]");
-const clearActivityButton = document.querySelector("[data-clear-activity]");
-const previewArea = document.querySelector("[data-preview-area]");
-const previewTable = previewArea?.querySelector("[data-preview-table]");
-const previewHead = previewTable?.querySelector("thead");
-const previewBody = previewTable?.querySelector("tbody");
-const confirmButton = previewArea?.querySelector("[data-confirm-import]");
-const stepsList = document.querySelector("[data-import-steps]");
-const viewHistoryButton = document.querySelector("[data-view-history]");
-const deleteDataButton = document.querySelector("[data-delete-data]");
-const historyModal = document.querySelector("[data-history-modal]");
-const historyBody = document.querySelector("[data-history-body]");
-const closeHistoryButton = document.querySelector("[data-close-history]");
-const clearHistoryButton = document.querySelector("[data-clear-history]");
+window.addEventListener("DOMContentLoaded", () => {
+  // All DOM queries and event listeners go inside here
+  const statElements = document.querySelectorAll("[data-stat]");
+  const activityBody = document.querySelector("[data-activity-body]");
+  const clearActivityButton = document.querySelector("[data-clear-activity]");
+  const previewArea = document.querySelector("[data-preview-area]");
+  const previewTable = previewArea?.querySelector("[data-preview-table]");
+  const previewHead = previewTable?.querySelector("thead");
+  const previewBody = previewTable?.querySelector("tbody");
+  const confirmButton = previewArea?.querySelector("[data-confirm-import]");
+  const stepsList = document.querySelector("[data-import-steps]");
+  const viewHistoryButton = document.querySelector("[data-view-history]");
+  const deleteDataButton = document.querySelector("[data-delete-data]");
+  const historyModal = document.querySelector("[data-history-modal]");
+  const historyBody = document.querySelector("[data-history-body]");
+  const closeHistoryButton = document.querySelector("[data-close-history]");
+  const clearHistoryButton = document.querySelector("[data-clear-history]");
 
-let currentStage = 1;
-const importState = {
-  students: 0,
-  teachers: 0,
-};
+  let currentStage = 1;
+  const importState = {
+    students: 0,
+    teachers: 0,
+  };
 
-function updateSteps() {
-  if (!stepsList) return;
-  const labels = stepsList.querySelectorAll("li");
-  labels.forEach((label, index) => {
-    const stepNumber = index + 1;
-    label.style.opacity = stepNumber <= currentStage ? "1" : "0.45";
-    label.style.fontWeight = stepNumber === currentStage ? "600" : "400";
-  });
-}
+  function updateSteps() {
+    if (!stepsList) return;
+    const labels = stepsList.querySelectorAll("li");
+    labels.forEach((label, index) => {
+      const stepNumber = index + 1;
+      label.style.opacity = stepNumber <= currentStage ? "1" : "0.45";
+      label.style.fontWeight = stepNumber === currentStage ? "600" : "400";
+    });
+  }
+  // ...existing code...
+  // Move all other code (event listeners, functions, etc.) inside this block
+  updateSteps();
+  setupUploads();
+  loadStats();
+  loadActivity();
+  setupLiveUpdates?.();
+  loadTeachersInfo?.();
+  setupStudentFilters?.();
+});
 
 async function loadStats() {
   try {
@@ -303,13 +315,18 @@ async function loadStreamsDivisions() {
 templateButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const type = button.dataset.downloadTemplate;
-
     if (type === "students") {
-      // Show modal for students export
+      // Show modal for students view
       loadStreamsDivisions();
       exportStudentsModal?.showModal();
+      // Reset table and export button
+      const studentsViewTable = exportStudentsModal?.querySelector("[data-students-view-table]");
+      const studentsViewBody = exportStudentsModal?.querySelector("[data-students-view-body]");
+      const exportCsvButton = exportStudentsModal?.querySelector("[data-export-csv]");
+      if (studentsViewTable) studentsViewTable.style.display = "none";
+      if (exportCsvButton) exportCsvButton.style.display = "none";
+      if (studentsViewBody) studentsViewBody.innerHTML = '<tr><td colspan="6">Select filters and click View to see students.</td></tr>';
     } else {
-      // Direct download for teachers
       window.open(`/api/admin/templates/${type}`, "_blank");
     }
   });
@@ -317,6 +334,96 @@ templateButtons.forEach((button) => {
 
 cancelExportButton?.addEventListener("click", () => {
   exportStudentsModal?.close();
+});
+
+exportStudentsForm?.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const stream = exportStreamSelect?.value;
+  const division = exportDivisionSelect?.value;
+  const year = exportYearSelect?.value;
+
+  if (!stream || !division || !year) {
+    showToast({
+      title: "Missing selection",
+      message: "Please select stream, division, and year",
+      type: "warning",
+    });
+    return;
+  }
+
+  const studentsViewTable = exportStudentsModal?.querySelector("[data-students-view-table]");
+  const studentsViewBody = exportStudentsModal?.querySelector("[data-students-view-body]");
+  const exportCsvButton = exportStudentsModal?.querySelector("[data-export-csv]");
+
+  if (studentsViewBody) studentsViewBody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+
+  apiFetch(`/api/admin/students?stream=${encodeURIComponent(stream)}&division=${encodeURIComponent(division)}&year=${encodeURIComponent(year)}`)
+    .then(({ students }) => {
+      if (!students || !students.length) {
+        if (studentsViewBody) studentsViewBody.innerHTML = '<tr><td colspan="6">No students found for selected filters.</td></tr>';
+        if (studentsViewTable) studentsViewTable.style.display = "block";
+        if (exportCsvButton) exportCsvButton.style.display = "none";
+        return;
+      }
+      const rows = students.map((student) => `
+        <tr>
+          <td>${student.roll_no || "—"}</td>
+          <td>${student.student_id || "—"}</td>
+          <td>${student.name || "—"}</td>
+          <td>${student.year || "—"}</td>
+          <td>${student.stream || "—"}</td>
+          <td>${student.division || "—"}</td>
+        </tr>
+      `).join("");
+      if (studentsViewBody) studentsViewBody.innerHTML = rows;
+      if (studentsViewTable) studentsViewTable.style.display = "block";
+      if (exportCsvButton) exportCsvButton.style.display = "inline-block";
+      // Store students for CSV export
+      exportStudentsModal.studentsData = students;
+    })
+    .catch((error) => {
+      if (studentsViewBody) studentsViewBody.innerHTML = `<tr><td colspan="6">Failed to load students: ${error.message}</td></tr>`;
+      if (studentsViewTable) studentsViewTable.style.display = "block";
+      if (exportCsvButton) exportCsvButton.style.display = "none";
+    });
+});
+
+// Export as CSV logic
+const exportCsvButton = exportStudentsModal?.querySelector("[data-export-csv]");
+if (exportCsvButton) {
+  exportCsvButton.addEventListener("click", () => {
+    const students = exportStudentsModal.studentsData;
+    if (!students || !students.length) {
+      showToast({
+        title: "No data",
+        message: "No students to export.",
+        type: "warning",
+      });
+      return;
+    }
+    // Convert to CSV
+    const columns = ["roll_no", "student_id", "name", "year", "stream", "division"];
+    const csvRows = [columns.join(",")].concat(
+      students.map((student) => columns.map((col) => `"${(student[col] || "").toString().replace(/"/g, '""')}"`).join(","))
+    );
+    const csvContent = csvRows.join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "students_export.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast({
+      title: "Exported",
+      message: "CSV file has been downloaded.",
+      type: "success",
+    });
+  });
+}
 });
 
 exportStudentsForm?.addEventListener("submit", (e) => {
