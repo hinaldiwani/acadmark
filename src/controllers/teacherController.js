@@ -33,9 +33,9 @@ export async function teacherDashboard(req, res, next) {
     const teacherInfo = teacher?.[0] || {};
     const stats = await getTeacherStats(teacherId);
 
-    // Get streams, years, semesters, and divisions assigned to this teacher only
+    // Get streams, years, semesters, divisions, and subjects assigned to this teacher only
     const [teacherAssignments] = await pool.query(
-      `SELECT DISTINCT stream, year, semester, division 
+      `SELECT DISTINCT stream, year, semester, division, subject
        FROM teacher_details_db 
        WHERE teacher_id = ?
        ORDER BY stream, year, semester`,
@@ -59,6 +59,16 @@ export async function teacherDashboard(req, res, next) {
       ),
     ].sort();
 
+    // Extract unique subjects from all assignments
+    const uniqueSubjects = [
+      ...new Set(
+        teacherAssignments
+          .map((a) => a.subject)
+          .filter((s) => s && s.trim().length > 0)
+          .map((s) => s.trim()),
+      ),
+    ].sort();
+
     return res.json({
       ...stats,
       teacherInfo: {
@@ -71,6 +81,7 @@ export async function teacherDashboard(req, res, next) {
       years: uniqueYears,
       semesters: uniqueSemesters,
       divisions: uniqueDivisions,
+      subjects: uniqueSubjects,
     });
   } catch (error) {
     return next(error);
@@ -1050,6 +1061,41 @@ export async function teacherGetDefaulterList(req, res, next) {
       });
     }
 
+    // ── Auto-save to Defaulter_History_Lists on every view (non-fatal) ──────
+    try {
+      const [tRows] = await pool.query(
+        `SELECT name FROM teacher_details_db WHERE teacher_id = ? LIMIT 1`,
+        [teacherId],
+      );
+      const teacherName = tRows?.[0]?.name || null;
+      const parts = [];
+      if (year) parts.push(`Year: ${year}`);
+      if (filterStream) parts.push(`Stream: ${filterStream}`);
+      if (division) parts.push(`Div: ${division}`);
+      if (month) parts.push(`Month: ${month}`);
+      parts.push(`Threshold: ${parseFloat(threshold)}%`);
+      await pool.query(
+        `INSERT INTO Defaulter_History_Lists
+           (teacher_id, teacher_name, threshold, year, stream, division, month,
+            defaulter_count, filters_summary, defaulters_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          teacherId,
+          teacherName,
+          parseFloat(threshold),
+          year || null,
+          filterStream || null,
+          division || null,
+          month ? parseInt(month) : null,
+          defaulters.length,
+          parts.join(" | "),
+          JSON.stringify(defaulters),
+        ],
+      );
+    } catch (histErr) {
+      console.warn("⚠️  Defaulter history save skipped:", histErr.message);
+    }
+
     return res.json({
       defaulters,
       count: defaulters.length,
@@ -1279,6 +1325,53 @@ export async function deleteDefaulterHistoryEntry(req, res, next) {
     }
 
     return res.json({ message: "Defaulter history entry deleted" });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function downloadDefaulterHistoryEntry(req, res, next) {
+  try {
+    const teacherId = req.session.user.id;
+    const { id } = req.params;
+
+    const [rows] = await pool.query(
+      `SELECT * FROM Defaulter_History_Lists WHERE id = ? AND teacher_id = ?`,
+      [id, teacherId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Record not found" });
+    }
+
+    const record = rows[0];
+    let defaulters = [];
+    try {
+      defaulters = JSON.parse(record.defaulters_json || "[]");
+    } catch (_) {}
+
+    if (defaulters.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No defaulters stored in this record" });
+    }
+
+    const threshold = parseFloat(record.threshold || 75);
+    const workbook = await defaulterService.generateDefaulterExcel(defaulters, {
+      month: record.month ? parseInt(record.month) : undefined,
+      year: record.year || undefined,
+      type: "monthly",
+      threshold,
+    });
+
+    const filename = `Defaulter_History_${threshold}%_${record.month || "All"}_${record.year || "All"}_${id}.xlsx`;
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (error) {
     return next(error);
   }

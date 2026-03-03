@@ -596,6 +596,9 @@ window.addEventListener("DOMContentLoaded", () => {
               <button class="btn ghost" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;" onclick="viewSessionStudents(${item.id})">
                 View
               </button>
+              <button class="btn ghost" style="padding: 0.25rem 0.75rem; font-size: 0.85rem; color: #2980b9; border-color: #2980b9;" onclick="window.open('/api/admin/attendance/backup/${item.id}', '_blank')">
+                Download
+              </button>
               <button class="btn ghost" style="padding: 0.25rem 0.75rem; font-size: 0.85rem; color: #dc3545; border-color: #dc3545;" onclick="deleteAttendanceRecord(${item.id})">
                 Delete
               </button>
@@ -647,6 +650,9 @@ window.addEventListener("DOMContentLoaded", () => {
   const defaulterPrevButton = document.querySelector("[data-defaulter-prev]");
   const defaulterGenerateButton = document.querySelector(
     "[data-defaulter-generate]",
+  );
+  const defaulterExportDirectButton = document.querySelector(
+    "[data-defaulter-export-direct]",
   );
   const tabButtons = document.querySelectorAll("[data-defaulter-tab]");
   const tabContents = document.querySelectorAll("[data-tab-content]");
@@ -728,6 +734,9 @@ window.addEventListener("DOMContentLoaded", () => {
       index < tabs.length - 1 ? "block" : "none";
     defaulterGenerateButton.style.display =
       index === tabs.length - 1 ? "block" : "none";
+    if (defaulterExportDirectButton)
+      defaulterExportDirectButton.style.display =
+        index === tabs.length - 1 ? "block" : "none";
   }
 
   // Tab button clicks
@@ -868,6 +877,85 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     } finally {
       toggleLoading(defaulterGenerateButton, false);
+    }
+  });
+
+  // Wizard direct Export button (no preview)
+  defaulterExportDirectButton?.addEventListener("click", async () => {
+    const formData = new FormData(defaulterForm);
+    const year = formData.get("year");
+    const stream = formData.get("stream");
+    const division = formData.get("division");
+    const month = formData.get("month");
+    const threshold = formData.get("threshold");
+
+    if (!threshold) {
+      showToast({
+        title: "Missing threshold",
+        message: "Please complete all steps before exporting",
+        type: "warning",
+      });
+      return;
+    }
+
+    const params = new URLSearchParams({
+      threshold: parseFloat(threshold),
+      type: "monthly",
+    });
+    if (month && month !== "ALL") params.append("month", month);
+    if (year && year !== "ALL") params.append("year", year);
+    if (stream && stream !== "ALL") params.append("stream", stream);
+    if (division && division !== "ALL") params.append("division", division);
+
+    try {
+      toggleLoading(defaulterExportDirectButton, true);
+
+      const response = await fetch(
+        `/api/admin/defaulters/download?${params.toString()}`,
+        { method: "GET", credentials: "include" },
+      );
+
+      if (!response.ok) {
+        const error = await response
+          .json()
+          .catch(() => ({ message: "Failed to download defaulter list" }));
+        throw new Error(error.message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const monthLabel = month || "All";
+      const yearLabel = year || "All";
+      const thresholdLabel = threshold || "75";
+      a.download = `Defaulter_List_${thresholdLabel}%_${monthLabel}_${yearLabel}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      showToast({
+        title: "Export successful",
+        message: "Defaulter list downloaded",
+        type: "success",
+      });
+
+      defaulterModal?.close();
+      defaulterForm?.reset();
+      defaulterForm.style.display = "block";
+      const defaultersPreview = document.querySelector(
+        "[data-defaulters-preview]",
+      );
+      if (defaultersPreview) defaultersPreview.style.display = "none";
+    } catch (error) {
+      showToast({
+        title: "Export failed",
+        message: error.message,
+        type: "error",
+      });
+    } finally {
+      toggleLoading(defaulterExportDirectButton, false);
     }
   });
 
@@ -1025,6 +1113,8 @@ window.addEventListener("DOMContentLoaded", () => {
               <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
                 <button class="btn ghost" style="padding:0.2rem 0.6rem;font-size:0.8rem;"
                   onclick="openAdminDhDetail(${item.id})">View</button>
+                <button class="btn ghost" style="padding:0.2rem 0.6rem;font-size:0.8rem;color:#2980b9;border-color:#2980b9;"
+                  onclick="window.open('/api/admin/defaulters/history/${item.id}/download', '_blank')">Download</button>
                 <button class="btn ghost" style="padding:0.2rem 0.6rem;font-size:0.8rem;color:#dc3545;border-color:#dc3545;"
                   onclick="deleteAdminDhItem(${item.id})">Delete</button>
               </div>

@@ -36,6 +36,7 @@ import {
   getAdminDefaulterHistory,
   viewAdminDefaulterHistoryEntry,
   deleteAdminDefaulterHistoryEntry,
+  downloadAdminDefaulterHistoryEntry,
 } from "../controllers/adminController.js";
 import { requireAuth, requireRole } from "../middlewares/authMiddleware.js";
 import notificationService from "../services/notificationService.js";
@@ -80,6 +81,10 @@ router.get("/defaulters", getDefaulterList);
 router.get("/defaulters/download", downloadDefaulterList);
 router.get("/defaulters/history", getAdminDefaulterHistory);
 router.get("/defaulters/history/:id", viewAdminDefaulterHistoryEntry);
+router.get(
+  "/defaulters/history/:id/download",
+  downloadAdminDefaulterHistoryEntry,
+);
 router.delete("/defaulters/history/:id", deleteAdminDefaulterHistoryEntry);
 
 // Teacher and Student information routes

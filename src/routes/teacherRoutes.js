@@ -22,6 +22,7 @@ import {
   getDefaulterHistory,
   viewDefaulterHistoryEntry,
   deleteDefaulterHistoryEntry,
+  downloadDefaulterHistoryEntry,
 } from "../controllers/teacherController.js";
 import {
   deleteAttendanceHistory,
@@ -57,6 +58,7 @@ router.get("/defaulters/download", teacherDownloadDefaulterList);
 router.post("/defaulters/history", saveDefaulterHistory);
 router.get("/defaulters/history", getDefaulterHistory);
 router.get("/defaulters/history/:id", viewDefaulterHistoryEntry);
+router.get("/defaulters/history/:id/download", downloadDefaulterHistoryEntry);
 router.delete("/defaulters/history/:id", deleteDefaulterHistoryEntry);
 
 // Real-time updates via Server-Sent Events

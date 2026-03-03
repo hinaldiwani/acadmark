@@ -725,6 +725,40 @@ export async function getDefaulterList(req, res, next) {
       });
     }
 
+    // ── Auto-save to Defaulter_History_Lists on every view (non-fatal) ──────
+    try {
+      const adminId = req.session?.user?.id || "admin";
+      const parts = [];
+      if (year) parts.push(`Year: ${year}`);
+      if (stream) parts.push(`Stream: ${stream}`);
+      if (division) parts.push(`Div: ${division}`);
+      if (month) parts.push(`Month: ${month}`);
+      parts.push(`Threshold: ${parseFloat(threshold)}%`);
+      await pool.query(
+        `INSERT INTO Defaulter_History_Lists
+           (teacher_id, teacher_name, threshold, year, stream, division, month,
+            defaulter_count, filters_summary, defaulters_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          adminId,
+          "Admin",
+          parseFloat(threshold),
+          year || null,
+          stream || null,
+          division || null,
+          month ? parseInt(month) : null,
+          defaulters.length,
+          parts.join(" | "),
+          JSON.stringify(defaulters),
+        ],
+      );
+    } catch (histErr) {
+      console.warn(
+        "⚠️  Admin defaulter history save skipped:",
+        histErr.message,
+      );
+    }
+
     return res.json({
       defaulters,
       count: defaulters.length,
@@ -1485,6 +1519,52 @@ export async function deleteAdminDefaulterHistoryEntry(req, res, next) {
     return res.json({ message: "Record deleted successfully" });
   } catch (error) {
     console.error("Admin delete defaulter history entry error:", error);
+    return next(error);
+  }
+}
+
+export async function downloadAdminDefaulterHistoryEntry(req, res, next) {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query(
+      `SELECT * FROM Defaulter_History_Lists WHERE id = ?`,
+      [id],
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ message: "Record not found" });
+    }
+    const record = rows[0];
+    let defaulters = [];
+    try {
+      defaulters = record.defaulters_json
+        ? JSON.parse(record.defaulters_json)
+        : [];
+    } catch (_) {}
+
+    if (defaulters.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No defaulters stored in this record" });
+    }
+
+    const threshold = parseFloat(record.threshold || 75);
+    const workbook = await defaulterService.generateDefaulterExcel(defaulters, {
+      month: record.month ? parseInt(record.month) : undefined,
+      year: record.year || undefined,
+      type: "monthly",
+      threshold,
+    });
+
+    const filename = `Defaulter_History_${threshold}%_${record.month || "All"}_${record.year || "All"}_${id}.xlsx`;
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("Admin download defaulter history entry error:", error);
     return next(error);
   }
 }

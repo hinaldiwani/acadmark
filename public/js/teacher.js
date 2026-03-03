@@ -106,6 +106,7 @@ let availableStreams = [];
 let availableDivisions = [];
 let availableYears = [];
 let availableSemesters = [];
+let availableSubjects = [];
 let recentSessionsData = [];
 
 function handleError(error, fallback = "Something went wrong") {
@@ -125,6 +126,7 @@ async function loadDashboard() {
     availableDivisions = data.divisions || [];
     availableYears = data.years || [];
     availableSemesters = data.semesters || [];
+    availableSubjects = data.subjects || [];
     recentSessionsData = data?.recentSessions || [];
 
     const summary = data?.summary || {};
@@ -139,14 +141,9 @@ async function loadDashboard() {
       summaryDivisionsEl.textContent = availableDivisions.length;
     if (summaryYearsEl) summaryYearsEl.textContent = availableYears.length;
 
-    // Count unique subjects - get from teacherInfo
-    const subjects = teacherData?.subject
-      ? teacherData.subject
-          .split(",")
-          .map((s) => s.trim())
-          .filter((s) => s)
-      : [];
-    if (summarySubjectsEl) summarySubjectsEl.textContent = subjects.length || 1;
+    // Count unique subjects from backend data
+    if (summarySubjectsEl)
+      summarySubjectsEl.textContent = availableSubjects.length || 1;
 
     renderRecentSessions(data?.recentSessions || []);
 
@@ -912,15 +909,9 @@ function showSubjectsModal() {
   if (!subjectsModal) return;
 
   const list = subjectsModal.querySelector("[data-subjects-list]");
-  const subjects = teacherData?.subject
-    ? teacherData.subject
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s)
-    : [];
 
-  if (list && subjects.length) {
-    list.innerHTML = subjects
+  if (list && availableSubjects.length) {
+    list.innerHTML = availableSubjects
       .map(
         (subject) =>
           `<li style="padding: 0.75rem; border-bottom: 1px solid #eee; font-size: 1rem;">${subject}</li>`,
@@ -1297,6 +1288,8 @@ async function loadDefaulterHistory() {
             <div style="display:flex; gap:0.4rem">
               <button class="btn ghost" data-dh-view="${item.id}"
                 style="padding:0.25rem 0.65rem; font-size:0.8rem">View</button>
+              <button class="btn ghost" data-dh-download="${item.id}"
+                style="padding:0.25rem 0.65rem; font-size:0.8rem; color:#2980b9; border-color:#2980b9">Download</button>
               <button class="btn ghost" data-dh-delete="${item.id}"
                 style="padding:0.25rem 0.65rem; font-size:0.8rem; color:#dc3545">Delete</button>
             </div>
@@ -1314,6 +1307,19 @@ async function loadDefaulterHistory() {
         openDefaulterHistoryDetail(btn.getAttribute("data-dh-view")),
       );
     });
+
+    // Download buttons
+    defaulterHistoryBody
+      .querySelectorAll("[data-dh-download]")
+      .forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-dh-download");
+          window.open(
+            `/api/teacher/defaulters/history/${id}/download`,
+            "_blank",
+          );
+        });
+      });
 
     // Delete buttons
     defaulterHistoryBody.querySelectorAll("[data-dh-delete]").forEach((btn) => {
@@ -1776,25 +1782,6 @@ function initDefaulterButton() {
       `,
         )
         .join("");
-
-      // Auto-save this view to Defaulter History
-      try {
-        await fetch("/api/teacher/defaulters/history", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            threshold,
-            year: year || null,
-            stream: stream || null,
-            division: division || null,
-            month: month || null,
-            defaulters,
-          }),
-        });
-      } catch (_) {
-        // Non-fatal — history save failure should not break the view
-      }
     } catch (error) {
       defaulterResultsBody.innerHTML = `<tr><td colspan="8">Error: ${error.message}</td></tr>`;
       showToast({
