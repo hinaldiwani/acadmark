@@ -9,6 +9,7 @@ import {
   manualAttendance,
   teacherActivityLog,
   getStudentsPresent,
+  getSubjectSessions,
   saveAttendanceBackup,
   getAttendanceHistory,
   downloadAttendanceBackup,
@@ -36,6 +37,7 @@ router.use(requireAuth, requireRole("teacher"));
 router.get("/dashboard", teacherDashboard);
 router.get("/students", mappedStudents);
 router.get("/students/present", getStudentsPresent);
+router.get("/subject-sessions", getSubjectSessions);
 router.get("/streams", getStreamsAndDivisions);
 router.get("/subjects", getSubjectsForClass);
 router.post("/attendance/start", startAttendance);

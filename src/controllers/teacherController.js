@@ -134,8 +134,8 @@ export async function getSubjectsForClass(req, res, next) {
       });
     }
 
-    // Convert semester to database format (e.g., "1" -> "Sem 1")
-    const semesterFilter = semester ? `Sem ${semester}` : null;
+    // Semester is already in "Sem X" format from frontend
+    const semesterFilter = semester || null;
 
     // Get subjects taught by this teacher for the specific year/stream/division/semester
     // Split comma-separated divisions to match individual divisions
@@ -185,11 +185,19 @@ export async function startAttendance(req, res, next) {
       });
     }
 
-    const students = await getMappedStudents(teacherId);
+    // Get students strictly filtered by Year, Semester, Stream, Division, and Subject
+    const students = await getMappedStudents(teacherId, {
+      subject,
+      year,
+      semester,
+      stream,
+      division,
+    });
+
     if (!students.length) {
       return res
         .status(404)
-        .json({ message: "No students mapped to this teacher yet" });
+        .json({ message: "No students found for this class combination" });
     }
 
     const sessionId = await createAttendanceSession({
@@ -445,6 +453,36 @@ export async function getStudentsPresent(req, res, next) {
     const students = await getMappedStudents(teacherId);
 
     res.json({ students });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getSubjectSessions(req, res, next) {
+  try {
+    const teacherId = req.session.user.id;
+
+    // Get subject session breakdown by class for this teacher
+    const [subjectSessions] = await pool.query(
+      `SELECT 
+         s.subject,
+         s.year,
+         s.semester,
+         s.stream,
+         s.division,
+         COUNT(DISTINCT s.session_id) as session_count
+       FROM attendance_sessions s
+       WHERE s.teacher_id = ?
+         AND s.subject IS NOT NULL
+         AND s.year IS NOT NULL
+         AND s.stream IS NOT NULL
+         AND s.division IS NOT NULL
+       GROUP BY s.subject, s.year, s.semester, s.stream, s.division
+       ORDER BY s.year, s.semester, s.stream, s.division, s.subject`,
+      [teacherId]
+    );
+
+    res.json({ subjectSessions });
   } catch (error) {
     next(error);
   }
@@ -1302,7 +1340,7 @@ export async function viewDefaulterHistoryEntry(req, res, next) {
     let defaulters = [];
     try {
       defaulters = JSON.parse(row.defaulters_json || "[]");
-    } catch (_) {}
+    } catch (_) { }
 
     return res.json({ record: row, defaulters });
   } catch (error) {
@@ -1348,7 +1386,7 @@ export async function downloadDefaulterHistoryEntry(req, res, next) {
     let defaulters = [];
     try {
       defaulters = JSON.parse(record.defaulters_json || "[]");
-    } catch (_) {}
+    } catch (_) { }
 
     if (defaulters.length === 0) {
       return res

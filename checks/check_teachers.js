@@ -2,7 +2,7 @@ import pool from '../config/db.js';
 
 async function checkTeachers() {
     try {
-        const [count] = await pool.query('SELECT COUNT(*) as count FROM teacher_details_db');
+        const [count] = await pool.query('SELECT COUNT(DISTINCT teacher_id) as count FROM teacher_details_db');
         console.log('Total teachers in database:', count[0].count);
 
         const [teachers] = await pool.query('SELECT * FROM teacher_details_db ORDER BY teacher_id, subject');

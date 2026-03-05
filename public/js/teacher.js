@@ -6,13 +6,13 @@ import {
   toggleLoading,
 } from "./main.js";
 
-const summarySessionsEl = document.querySelector("[data-summary-sessions]");
 const summaryAverageEl = document.querySelector("[data-summary-average]");
 const summaryPresentEl = document.querySelector("[data-summary-present]");
 const summaryStreamsEl = document.querySelector("[data-summary-streams]");
 const summaryDivisionsEl = document.querySelector("[data-summary-divisions]");
 const summaryYearsEl = document.querySelector("[data-summary-years]");
 const summarySubjectsEl = document.querySelector("[data-summary-subjects]");
+const summarySubjectSessionsEl = document.querySelector("[data-summary-subject-sessions]");
 const recentBody = document.querySelector("[data-recent-body]");
 const activityBody = document.querySelector("[data-activity-body]");
 const refreshButton = document.querySelector("[data-refresh]");
@@ -66,7 +66,7 @@ const showStreamsButton = document.querySelector("[data-show-streams]");
 const showDivisionsButton = document.querySelector("[data-show-divisions]");
 const showYearsButton = document.querySelector("[data-show-years]");
 const showSubjectsButton = document.querySelector("[data-show-subjects]");
-const showSessionsButton = document.querySelector("[data-show-sessions]");
+const showSubjectSessionsButton = document.querySelector("[data-show-subject-sessions]");
 const showStudentsPresentButton = document.querySelector(
   "[data-show-students-present]",
 );
@@ -75,7 +75,7 @@ const streamsModal = document.querySelector("[data-streams-modal]");
 const divisionsModal = document.querySelector("[data-divisions-modal]");
 const yearsModal = document.querySelector("[data-years-modal]");
 const subjectsModal = document.querySelector("[data-subjects-modal]");
-const sessionsModal = document.querySelector("[data-sessions-modal]");
+const subjectSessionsModal = document.querySelector("[data-subject-sessions-modal]");
 const studentsPresentModal = document.querySelector(
   "[data-students-present-modal]",
 );
@@ -84,7 +84,7 @@ const closeStreamsButton = document.querySelector("[data-close-streams]");
 const closeDivisionsButton = document.querySelector("[data-close-divisions]");
 const closeYearsButton = document.querySelector("[data-close-years]");
 const closeSubjectsButton = document.querySelector("[data-close-subjects]");
-const closeSessionsButton = document.querySelector("[data-close-sessions]");
+const closeSubjectSessionsButton = document.querySelector("[data-close-subject-sessions]");
 const closeStudentsPresentButton = document.querySelector(
   "[data-close-students-present]",
 );
@@ -99,6 +99,13 @@ const badgeSize = document.querySelector("[data-session-size]");
 const badgePresent = document.querySelector("[data-session-present]");
 const badgeAbsent = document.querySelector("[data-session-absent]");
 
+// Save confirmation modal
+const saveConfirmationModal = document.querySelector("[data-save-confirmation-modal]");
+const confirmPresentEl = document.querySelector("[data-confirm-present]");
+const confirmAbsentEl = document.querySelector("[data-confirm-absent]");
+const cancelSaveConfirmationButton = document.querySelector("[data-cancel-save-confirmation]");
+const confirmSaveSessionButton = document.querySelector("[data-confirm-save-session]");
+
 let currentSession = null;
 let lastSessionDetails = null;
 let teacherData = null;
@@ -107,7 +114,6 @@ let availableDivisions = [];
 let availableYears = [];
 let availableSemesters = [];
 let availableSubjects = [];
-let recentSessionsData = [];
 
 function handleError(error, fallback = "Something went wrong") {
   console.error(error);
@@ -127,10 +133,14 @@ async function loadDashboard() {
     availableYears = data.years || [];
     availableSemesters = data.semesters || [];
     availableSubjects = data.subjects || [];
-    recentSessionsData = data?.recentSessions || [];
+
+    // Update teacher name in header
+    const teacherNameEl = document.querySelector("[data-teacher-name]");
+    if (teacherNameEl && teacherData?.name) {
+      teacherNameEl.textContent = teacherData.name;
+    }
 
     const summary = data?.summary || {};
-    summarySessionsEl.textContent = summary.sessions ?? 0;
     summaryAverageEl.textContent = `${summary.averagePercentage ?? 0}%`;
     summaryPresentEl.textContent = summary.totalPresent ?? 0;
 
@@ -144,6 +154,10 @@ async function loadDashboard() {
     // Count unique subjects from backend data
     if (summarySubjectsEl)
       summarySubjectsEl.textContent = availableSubjects.length || 1;
+
+    // Set subject sessions count
+    if (summarySubjectSessionsEl)
+      summarySubjectSessionsEl.textContent = summary.sessions ?? 0;
 
     renderRecentSessions(data?.recentSessions || []);
 
@@ -311,7 +325,7 @@ function populateSemesterDropdown(year) {
     if (availableSemestersForYear.length > 0) {
       availableSemestersForYear.forEach((sem) => {
         const option = document.createElement("option");
-        option.value = sem;
+        option.value = `Sem ${sem}`;  // Fixed: Send "Sem 1" instead of just "1"
         option.textContent = `Semester ${sem}`;
         semesterDropdown.appendChild(option);
       });
@@ -513,9 +527,8 @@ function buildDetailText(action, meta) {
     const absent = meta.absent ?? 0;
     const total = present + absent;
     const percentage = total ? asPercentage(present, total) : "—";
-    return `${
-      meta.subject || "Class"
-    } • ${percentage} (${present} present/${absent} absent)`;
+    return `${meta.subject || "Class"
+      } • ${percentage} (${present} present/${absent} absent)`;
   }
 
   if (action === "MANUAL_OVERRIDE") {
@@ -580,7 +593,14 @@ function renderActiveSession() {
   updateSnapshot(currentSession);
   updateSessionBadges();
 
-  const rows = currentSession.students
+  // Sort students by roll number in ascending order before rendering
+  const sortedStudents = [...currentSession.students].sort((a, b) => {
+    const rollA = parseInt(a.rollNo) || 0;
+    const rollB = parseInt(b.rollNo) || 0;
+    return rollA - rollB;
+  });
+
+  const rows = sortedStudents
     .map(
       (student) => `
         <tr data-student="${student.id}">
@@ -588,9 +608,8 @@ function renderActiveSession() {
           <td>${student.id}</td>
           <td>${student.name}</td>
           <td>
-            <button type="button" class="status-pill" data-toggle-status data-status="${
-              student.status
-            }" data-student="${student.id}">
+            <button type="button" class="status-pill" data-toggle-status data-status="${student.status
+        }" data-student="${student.id}">
               ${student.status === "P" ? "Present" : "Absent"}
             </button>
           </td>
@@ -674,13 +693,18 @@ async function handleStartSession(event) {
 
     const students = Array.isArray(response.students)
       ? response.students.map((student) => ({
-          id: student.student_id,
-          name: student.student_name,
-          rollNo: student.roll_no,
-          stream: student.stream,
-          division: student.division,
-          status: "P",
-        }))
+        id: student.student_id,
+        name: student.student_name,
+        rollNo: student.roll_no,
+        stream: student.stream,
+        division: student.division,
+        status: "P",
+      })).sort((a, b) => {
+        // Sort by roll number in ascending order
+        const rollA = parseInt(a.rollNo) || 0;
+        const rollB = parseInt(b.rollNo) || 0;
+        return rollA - rollB;
+      })
       : [];
 
     currentSession = {
@@ -814,6 +838,26 @@ async function handleEndSession() {
     return;
   }
 
+  // Show confirmation modal with attendance summary
+  const presentCount = currentSession.students.filter(s => s.status === "P").length;
+  const absentCount = currentSession.students.filter(s => s.status === "A").length;
+
+  if (confirmPresentEl) confirmPresentEl.textContent = presentCount;
+  if (confirmAbsentEl) confirmAbsentEl.textContent = absentCount;
+
+  if (saveConfirmationModal) {
+    saveConfirmationModal.showModal();
+  }
+}
+
+async function confirmAndSaveSession() {
+  if (!currentSession) return;
+
+  // Close the confirmation modal
+  if (saveConfirmationModal) {
+    saveConfirmationModal.close();
+  }
+
   try {
     toggleLoading(endSessionButton, true);
     const payload = {
@@ -924,30 +968,43 @@ function showSubjectsModal() {
   subjectsModal.showModal();
 }
 
-function showSessionsModal() {
-  if (!sessionsModal) return;
+async function showSubjectSessionsModal() {
+  if (!subjectSessionsModal) return;
 
-  const list = sessionsModal.querySelector("[data-sessions-list]");
+  const list = subjectSessionsModal.querySelector("[data-subject-sessions-list]");
 
-  if (list && recentSessionsData.length) {
-    // Create unique class list from recent sessions
-    const uniqueClasses = new Set();
-    recentSessionsData.forEach((session) => {
-      const classFormat = `${session.year || "N/A"}-${session.stream || "N/A"}-${session.division || "N/A"}`;
-      uniqueClasses.add(classFormat);
-    });
+  if (!list) return;
 
-    list.innerHTML = Array.from(uniqueClasses)
-      .map(
-        (classInfo) =>
-          `<li style="padding: 0.75rem; border-bottom: 1px solid #eee; font-size: 1rem;">${classInfo}</li>`,
-      )
-      .join("");
-  } else if (list) {
-    list.innerHTML = '<li style="padding: 0.75rem;">No sessions found</li>';
+  list.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+  subjectSessionsModal.showModal();
+
+  try {
+    // Fetch subject session breakdown
+    const response = await apiFetch("/api/teacher/subject-sessions");
+    const subjectSessions = response.subjectSessions || [];
+
+    if (subjectSessions.length) {
+      list.innerHTML = subjectSessions
+        .map(
+          (session) => `
+        <tr>
+          <td>${session.subject || "—"}</td>
+          <td>${session.year || "—"}</td>
+          <td>${session.semester || "—"}</td>
+          <td>${session.stream || "—"}</td>
+          <td>${session.division || "—"}</td>
+          <td><strong>${session.session_count || 0}</strong></td>
+        </tr>
+      `,
+        )
+        .join("");
+    } else {
+      list.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No subject sessions found</td></tr>';
+    }
+  } catch (error) {
+    console.error("Error loading subject sessions:", error);
+    list.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--color-danger);">Failed to load subject sessions</td></tr>';
   }
-
-  sessionsModal.showModal();
 }
 
 async function showStudentsPresentModal() {
@@ -1088,7 +1145,7 @@ function initDialogs() {
   showDivisionsButton?.addEventListener("click", showDivisionsModal);
   showYearsButton?.addEventListener("click", showYearsModal);
   showSubjectsButton?.addEventListener("click", showSubjectsModal);
-  showSessionsButton?.addEventListener("click", showSessionsModal);
+  showSubjectSessionsButton?.addEventListener("click", showSubjectSessionsModal);
   showStudentsPresentButton?.addEventListener(
     "click",
     showStudentsPresentModal,
@@ -1100,7 +1157,7 @@ function initDialogs() {
   );
   closeYearsButton?.addEventListener("click", () => yearsModal?.close());
   closeSubjectsButton?.addEventListener("click", () => subjectsModal?.close());
-  closeSessionsButton?.addEventListener("click", () => sessionsModal?.close());
+  closeSubjectSessionsButton?.addEventListener("click", () => subjectSessionsModal?.close());
   closeStudentsPresentButton?.addEventListener("click", () =>
     studentsPresentModal?.close(),
   );
@@ -1128,6 +1185,19 @@ function initControls() {
   clearRecentButton?.addEventListener("click", handleClearRecent);
   clearActivityButton?.addEventListener("click", handleClearActivity);
   endSessionButton?.addEventListener("click", handleEndSession);
+
+  // Save confirmation modal handlers
+  confirmSaveSessionButton?.addEventListener("click", confirmAndSaveSession);
+  cancelSaveConfirmationButton?.addEventListener("click", () => {
+    if (saveConfirmationModal) {
+      saveConfirmationModal.close();
+    }
+  });
+  saveConfirmationModal?.addEventListener("click", (e) => {
+    if (e.target === saveConfirmationModal) {
+      saveConfirmationModal.close();
+    }
+  });
 
   viewHistoryButton?.addEventListener("click", async () => {
     if (historyModal) {
@@ -1212,19 +1282,16 @@ async function loadAttendanceHistory() {
           <td>${savedDate}</td>
           <td>
             <div style="display: flex; gap: 0.5rem;">
-              <button class="btn ghost" data-view-backup="${
-                item.id
-              }" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+              <button class="btn ghost" data-view-backup="${item.id
+          }" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
                 View
               </button>
-              <a href="/api/teacher/attendance/backup/${
-                item.id
-              }" class="btn ghost" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;" download>
+              <a href="/api/teacher/attendance/backup/${item.id
+          }" class="btn ghost" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;" download>
                 Download
               </a>
-              <button class="btn ghost" data-delete-backup="${
-                item.id
-              }" style="padding: 0.25rem 0.75rem; font-size: 0.85rem; color: #dc3545;">
+              <button class="btn ghost" data-delete-backup="${item.id
+          }" style="padding: 0.25rem 0.75rem; font-size: 0.85rem; color: #dc3545;">
                 Delete
               </button>
             </div>
@@ -1369,10 +1436,9 @@ async function openDefaulterHistoryDetail(id) {
           <td>${d.stream || "—"}</td>
           <td>${d.division || "—"}</td>
           <td>${d.subject || "—"}</td>
-          <td style="color:#e74c3c; font-weight:600">${
-            d.attendance_percentage != null
-              ? parseFloat(d.attendance_percentage).toFixed(1) + "%"
-              : "—"
+          <td style="color:#e74c3c; font-weight:600">${d.attendance_percentage != null
+            ? parseFloat(d.attendance_percentage).toFixed(1) + "%"
+            : "—"
           }</td>
         </tr>
       `,
@@ -1421,9 +1487,9 @@ async function deleteAttendanceBackup(backupId) {
   // Show confirmation dialog with warning
   const confirmed = confirm(
     "⚠️ WARNING: Are you sure you want to delete this attendance history?\n\n" +
-      "This action CANNOT be undone!\n" +
-      "Once deleted, you will NOT be able to retrieve this data again.\n\n" +
-      "Click 'OK' to permanently delete, or 'Cancel' to keep the data.",
+    "This action CANNOT be undone!\n" +
+    "Once deleted, you will NOT be able to retrieve this data again.\n\n" +
+    "Click 'OK' to permanently delete, or 'Cancel' to keep the data.",
   );
 
   if (!confirmed) {
@@ -1773,11 +1839,10 @@ function initDefaulterButton() {
           <td>${d.stream || "—"}</td>
           <td>${d.division || "—"}</td>
           <td>${d.subject || "—"}</td>
-          <td style="color:#e74c3c; font-weight:600">${
-            d.attendance_percentage != null
+          <td style="color:#e74c3c; font-weight:600">${d.attendance_percentage != null
               ? parseFloat(d.attendance_percentage).toFixed(1) + "%"
               : "—"
-          }</td>
+            }</td>
         </tr>
       `,
         )

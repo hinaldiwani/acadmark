@@ -45,17 +45,18 @@ export async function studentDashboard(req, res, next) {
     // Get monthly summary
     const [monthlySummary] = await pool.query(
       `SELECT 
-         YEAR(session_date) as year,
-         MONTH(session_date) as month,
-         stream,
-         division,
-         COUNT(*) as total_sessions,
-         SUM(CASE WHEN status = 'P' THEN 1 ELSE 0 END) as present_count,
-         SUM(CASE WHEN status = 'A' THEN 1 ELSE 0 END) as absent_count,
-         ROUND((SUM(CASE WHEN status = 'P' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 1) as percentage
-       FROM attendance_records
-       WHERE student_id = ?
-       GROUP BY YEAR(session_date), MONTH(session_date), stream, division
+         YEAR(s.started_at) as year,
+         MONTH(s.started_at) as month,
+         s.stream,
+         s.division,
+         COUNT(DISTINCT ar.session_id) as total_sessions,
+         SUM(CASE WHEN ar.status = 'P' THEN 1 ELSE 0 END) as present_count,
+         SUM(CASE WHEN ar.status = 'A' THEN 1 ELSE 0 END) as absent_count,
+         ROUND((SUM(CASE WHEN ar.status = 'P' THEN 1 ELSE 0 END) / COUNT(DISTINCT ar.session_id)) * 100, 1) as percentage
+       FROM attendance_records ar
+       JOIN attendance_sessions s ON ar.session_id = s.session_id
+       WHERE ar.student_id = ?
+       GROUP BY YEAR(s.started_at), MONTH(s.started_at), s.stream, s.division
        ORDER BY year DESC, month DESC
        LIMIT 6`,
       [studentId],
@@ -192,26 +193,28 @@ export async function getAllSessions(req, res, next) {
     // Joining directly would multiply attendance rows — one per teacher-subject row.
     const [sessions] = await pool.query(
       `SELECT 
-         ar.session_date,
-         ar.subject,
+         s.started_at as session_date,
+         s.subject,
          ar.status,
-         ar.year,
-         ar.stream,
-         ar.division,
+         s.year,
+         s.stream,
+         s.division,
          t.name as teacher_name,
-         ar.created_at
+         ar.marked_at as created_at
        FROM attendance_records ar
+       JOIN attendance_sessions s ON ar.session_id = s.session_id
        LEFT JOIN (
          SELECT teacher_id, MAX(name) AS name
          FROM teacher_details_db
          GROUP BY teacher_id
-       ) t ON ar.teacher_id = t.teacher_id
+       ) t ON s.teacher_id = t.teacher_id
        WHERE ar.student_id = ?
-         AND ar.year IS NOT NULL
-         AND ar.stream IS NOT NULL
-         AND ar.division IS NOT NULL
-         AND ar.subject IS NOT NULL
-       ORDER BY ar.session_date DESC, ar.created_at DESC`,
+         AND s.year IS NOT NULL
+         AND s.stream IS NOT NULL
+         AND s.division IS NOT NULL
+         AND s.subject IS NOT NULL
+       GROUP BY ar.session_id, ar.student_id
+       ORDER BY s.started_at DESC, ar.marked_at DESC`,
       [studentId],
     );
 
@@ -228,19 +231,21 @@ export async function getPresentSessions(req, res, next) {
     // Get sessions where student was present
     const [sessions] = await pool.query(
       `SELECT 
-         ar.session_date,
-         ar.subject,
-         ar.year,
-         ar.stream,
-         ar.division
+         s.started_at as session_date,
+         s.subject,
+         s.year,
+         s.stream,
+         s.division
        FROM attendance_records ar
+       JOIN attendance_sessions s ON ar.session_id = s.session_id
        WHERE ar.student_id = ? 
          AND ar.status = 'P'
-         AND ar.year IS NOT NULL
-         AND ar.stream IS NOT NULL
-         AND ar.division IS NOT NULL
-         AND ar.subject IS NOT NULL
-       ORDER BY ar.session_date DESC`,
+         AND s.year IS NOT NULL
+         AND s.stream IS NOT NULL
+         AND s.division IS NOT NULL
+         AND s.subject IS NOT NULL
+       GROUP BY ar.session_id, ar.student_id
+       ORDER BY s.started_at DESC`,
       [studentId],
     );
 
@@ -257,19 +262,21 @@ export async function getAbsentSessions(req, res, next) {
     // Get sessions where student was absent
     const [sessions] = await pool.query(
       `SELECT 
-         ar.session_date,
-         ar.subject,
-         ar.year,
-         ar.stream,
-         ar.division
+         s.started_at as session_date,
+         s.subject,
+         s.year,
+         s.stream,
+         s.division
        FROM attendance_records ar
+       JOIN attendance_sessions s ON ar.session_id = s.session_id
        WHERE ar.student_id = ? 
          AND ar.status = 'A'
-         AND ar.year IS NOT NULL
-         AND ar.stream IS NOT NULL
-         AND ar.division IS NOT NULL
-         AND ar.subject IS NOT NULL
-       ORDER BY ar.session_date DESC`,
+         AND s.year IS NOT NULL
+         AND s.stream IS NOT NULL
+         AND s.division IS NOT NULL
+         AND s.subject IS NOT NULL
+       GROUP BY ar.session_id, ar.student_id
+       ORDER BY s.started_at DESC`,
       [studentId],
     );
 
@@ -286,13 +293,14 @@ export async function getAttendanceCalendar(req, res, next) {
     // Get attendance data grouped by date
     const [attendanceByDate] = await pool.query(
       `SELECT 
-         DATE(session_date) as date,
-         COUNT(*) as total,
-         SUM(CASE WHEN status = 'P' THEN 1 ELSE 0 END) as present,
-         SUM(CASE WHEN status = 'A' THEN 1 ELSE 0 END) as absent
-       FROM attendance_records
-       WHERE student_id = ?
-       GROUP BY DATE(session_date)
+         DATE(s.started_at) as date,
+         COUNT(DISTINCT ar.session_id) as total,
+         SUM(CASE WHEN ar.status = 'P' THEN 1 ELSE 0 END) as present,
+         SUM(CASE WHEN ar.status = 'A' THEN 1 ELSE 0 END) as absent
+       FROM attendance_records ar
+       JOIN attendance_sessions s ON ar.session_id = s.session_id
+       WHERE ar.student_id = ?
+       GROUP BY DATE(s.started_at)
        ORDER BY date DESC`,
       [studentId],
     );

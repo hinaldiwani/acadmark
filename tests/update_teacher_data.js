@@ -51,7 +51,7 @@ async function updateTeacherData() {
         // Verify the update
         const [count] = await connection.query(
             `SELECT 
-        COUNT(*) as total,
+        COUNT(DISTINCT teacher_id) as total,
         SUM(CASE WHEN semester IS NOT NULL AND semester != '' THEN 1 ELSE 0 END) as with_semester,
         SUM(CASE WHEN division IS NOT NULL AND division != '' THEN 1 ELSE 0 END) as with_division
        FROM teacher_details_db`

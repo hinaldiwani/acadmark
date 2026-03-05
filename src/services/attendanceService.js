@@ -1,14 +1,58 @@
 import pool from "../../config/db.js";
 
-export async function getMappedStudents(teacherId) {
-  const [rows] = await pool.query(
-    `SELECT s.student_id, s.student_name, s.roll_no, s.stream, s.division, s.year
+export async function getMappedStudents(teacherId, filters = {}) {
+  let query = `SELECT s.student_id, s.student_name, s.roll_no, s.stream, s.division, s.year
      FROM student_details_db s
-     INNER JOIN teacher_student_map m ON s.student_id = m.student_id
-     WHERE m.teacher_id = ?
-     ORDER BY s.student_id ASC`,
-    [teacherId],
-  );
+     INNER JOIN teacher_student_map m ON s.student_id = m.student_id`;
+
+  const conditions = ["m.teacher_id = ?"];
+  const params = [teacherId];
+
+  // If filters are provided, add additional conditions and join with teacher_details_db
+  if (filters.subject || filters.year || filters.semester || filters.stream || filters.division) {
+    query += ` INNER JOIN teacher_details_db t ON m.teacher_id = t.teacher_id`;
+
+    if (filters.subject) {
+      conditions.push("t.subject = ?");
+      params.push(filters.subject);
+    }
+    if (filters.year) {
+      conditions.push("t.year = ?");
+      params.push(filters.year);
+    }
+    if (filters.semester) {
+      conditions.push("t.semester = ?");
+      params.push(filters.semester);
+    }
+    if (filters.stream) {
+      conditions.push("t.stream = ?");
+      params.push(filters.stream);
+    }
+    if (filters.division) {
+      // Handle comma-separated divisions in teacher_details_db
+      conditions.push("FIND_IN_SET(?, t.division) > 0");
+      params.push(filters.division);
+    }
+
+    // Also match student attributes
+    if (filters.year) {
+      conditions.push("s.year = ?");
+      params.push(filters.year);
+    }
+    if (filters.stream) {
+      conditions.push("s.stream = ?");
+      params.push(filters.stream);
+    }
+    if (filters.division) {
+      conditions.push("s.division = ?");
+      params.push(filters.division);
+    }
+  }
+
+  query += ` WHERE ` + conditions.join(" AND ");
+  query += ` ORDER BY s.roll_no ASC, s.student_id ASC`;
+
+  const [rows] = await pool.query(query, params);
   return rows;
 }
 
@@ -152,11 +196,11 @@ export async function getTeacherStats(teacherId) {
 
 export async function getStudentStats(studentId) {
   const [records] = await pool.query(
-    `SELECT COUNT(*) as total,
-            SUM(CASE WHEN status = 'P' THEN 1 ELSE 0 END) as present,
-            SUM(CASE WHEN status = 'A' THEN 1 ELSE 0 END) as absent
-     FROM attendance_records
-     WHERE student_id = ?`,
+    `SELECT COUNT(DISTINCT ar.session_id) as total,
+            SUM(CASE WHEN ar.status = 'P' THEN 1 ELSE 0 END) as present,
+            SUM(CASE WHEN ar.status = 'A' THEN 1 ELSE 0 END) as absent
+     FROM attendance_records ar
+     WHERE ar.student_id = ?`,
     [studentId],
   );
 
@@ -167,22 +211,25 @@ export async function getStudentStats(studentId) {
   const percentage = total ? Math.round((present / total) * 100) : 0;
 
   const [recentSessions] = await pool.query(
-    `SELECT session_date, subject, status, year, stream, division
-     FROM attendance_records
-     WHERE student_id = ?
-     ORDER BY session_date DESC
+    `SELECT s.started_at as session_date, s.subject, ar.status, s.year, s.stream, s.division
+     FROM attendance_records ar
+     JOIN attendance_sessions s ON ar.session_id = s.session_id
+     WHERE ar.student_id = ?
+     GROUP BY ar.session_id, ar.student_id
+     ORDER BY s.started_at DESC
      LIMIT 10`,
     [studentId],
   );
 
   // Subject breakdown
   const [subjectBreakdown] = await pool.query(
-    `SELECT subject,
-            COUNT(*) as total,
-            SUM(CASE WHEN status = 'P' THEN 1 ELSE 0 END) as present
-     FROM attendance_records
-     WHERE student_id = ?
-     GROUP BY subject`,
+    `SELECT s.subject,
+            COUNT(DISTINCT ar.session_id) as total,
+            SUM(CASE WHEN ar.status = 'P' THEN 1 ELSE 0 END) as present
+     FROM attendance_records ar
+     JOIN attendance_sessions s ON ar.session_id = s.session_id
+     WHERE ar.student_id = ?
+     GROUP BY s.subject`,
     [studentId],
   );
 

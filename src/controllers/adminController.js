@@ -52,7 +52,7 @@ export async function handleStudentImport(req, res, next) {
     return next(error);
   } finally {
     if (req.file) {
-      fs.rm(req.file.path, { force: true }, () => {});
+      fs.rm(req.file.path, { force: true }, () => { });
     }
   }
 }
@@ -78,7 +78,7 @@ export async function handleTeacherImport(req, res, next) {
     return next(error);
   } finally {
     if (req.file) {
-      fs.rm(req.file.path, { force: true }, () => {});
+      fs.rm(req.file.path, { force: true }, () => { });
     }
   }
 }
@@ -205,7 +205,7 @@ export async function fetchDashboardStats(req, res, next) {
     console.log("📊 Student count value:", studentCount?.[0]?.count);
 
     const [teacherCount] = await pool.query(
-      `SELECT COUNT(*) as count FROM teacher_details_db`,
+      `SELECT COUNT(DISTINCT teacher_id) as count FROM teacher_details_db`,
     );
 
     // Get distinct streams from student records
@@ -1498,7 +1498,7 @@ export async function viewAdminDefaulterHistoryEntry(req, res, next) {
       defaulters = record.defaulters_json
         ? JSON.parse(record.defaulters_json)
         : [];
-    } catch (_) {}
+    } catch (_) { }
     return res.json({ record, defaulters });
   } catch (error) {
     console.error("Admin view defaulter history entry error:", error);
@@ -1539,7 +1539,7 @@ export async function downloadAdminDefaulterHistoryEntry(req, res, next) {
       defaulters = record.defaulters_json
         ? JSON.parse(record.defaulters_json)
         : [];
-    } catch (_) {}
+    } catch (_) { }
 
     if (defaulters.length === 0) {
       return res

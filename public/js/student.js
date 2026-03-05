@@ -69,7 +69,18 @@ const calendarYearSelector = document.querySelector(
 const calendarPrevBtn = document.querySelector("[data-calendar-prev-btn]");
 const calendarNextBtn = document.querySelector("[data-calendar-next-btn]");
 
+// Subject section elements
+const subjectsSection = document.querySelector("[data-subjects-section]");
+const subjectDetailModal = document.querySelector("[data-subject-detail-modal]");
+const subjectModalTitle = document.querySelector("[data-subject-modal-title]");
+const modalTotal = document.querySelector("[data-modal-total]");
+const modalPresent = document.querySelector("[data-modal-present]");
+const modalAbsent = document.querySelector("[data-modal-absent]");
+const modalPercentage = document.querySelector("[data-modal-percentage]");
+const closeSubjectDetailButtons = document.querySelectorAll("[data-close-subject-detail]");
+
 let studentData = null;
+let subjectBreakdownData = [];
 let attendanceCalendarData = {};
 let currentCalendarMonth = new Date().getMonth(); // 0-11
 let currentCalendarYear = new Date().getFullYear();
@@ -114,13 +125,93 @@ async function loadDashboard() {
     // Render monthly summary
     renderMonthlySummary(data.monthlySummary || []);
 
+    // Store and render subject breakdown
+    subjectBreakdownData = data.subjectBreakdown || [];
+    renderSubjectCards(subjectBreakdownData);
+
     // Load attendance calendar
     loadAttendanceCalendar();
   } catch (error) {
     handleError(error, "Unable to load dashboard");
   }
 }
+function renderSubjectCards(subjects) {
+  if (!subjectsSection) return;
 
+  // Filter out subjects with null or empty names
+  const validSubjects = subjects.filter(s => s.subject && s.subject.trim() !== '');
+
+  if (!validSubjects || validSubjects.length === 0) {
+    subjectsSection.innerHTML = '';
+    subjectsSection.style.display = 'none';
+    return;
+  }
+
+  subjectsSection.style.display = 'grid';
+
+  const cards = validSubjects.map((subject) => {
+    const total = subject.total || 0;
+    const present = subject.present || 0;
+    const absent = total - present;
+    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+    return `
+      <div class="card" style="cursor: pointer;" data-subject-card data-subject-name="${subject.subject}" data-subject-total="${total}" data-subject-present="${present}" data-subject-absent="${absent}" data-subject-percentage="${percentage}">
+        <div style="margin-bottom: 0.75rem;">
+          <h4 style="margin: 0; font-size: 1rem; color: #2c3e50;">${subject.subject}</h4>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 0.5rem; gap: 0.5rem;">
+          <span style="font-size: 0.875rem; color: #7f8c8d; flex: 0 0 auto;">Total Sessions</span>
+          <span style="font-size: 1.25rem; font-weight: 600; color: #3498db; margin-left: auto;">${total}</span>
+        </div>
+        <div style="display: flex; font-size: 0.875rem; margin-bottom: 0.25rem; gap: 0.5rem;">
+          <span style="color: #7f8c8d; flex: 0 0 auto;">Present:</span>
+          <span style="font-weight: 600; color: #27ae60; margin-left: auto;">${present}</span>
+        </div>
+        <div style="display: flex; font-size: 0.875rem; margin-bottom: 0.75rem; gap: 0.5rem;">
+          <span style="color: #7f8c8d; flex: 0 0 auto;">Absent:</span>
+          <span style="font-weight: 600; color: #e74c3c; margin-left: auto;">${absent}</span>
+        </div>
+        <div style="padding: 0.5rem; background: ${percentage >= 75 ? '#e8f5e9' : '#ffebee'}; border-radius: 6px; text-align: center;">
+          <span style="font-weight: 600; color: ${percentage >= 75 ? '#27ae60' : '#e74c3c'}; font-size:1rem;">${percentage}%</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  subjectsSection.innerHTML = cards;
+
+  // Attach click handlers to subject cards
+  attachSubjectCardHandlers();
+}
+
+function attachSubjectCardHandlers() {
+  const subjectCards = document.querySelectorAll('[data-subject-card]');
+
+  subjectCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const subjectName = card.dataset.subjectName;
+      const total = parseInt(card.dataset.subjectTotal) || 0;
+      const present = parseInt(card.dataset.subjectPresent) || 0;
+      const absent = parseInt(card.dataset.subjectAbsent) || 0;
+      const percentage = parseInt(card.dataset.subjectPercentage) || 0;
+
+      showSubjectDetailModal(subjectName, total, present, absent, percentage);
+    });
+  });
+}
+
+function showSubjectDetailModal(subjectName, total, present, absent, percentage) {
+  if (!subjectDetailModal) return;
+
+  if (subjectModalTitle) subjectModalTitle.textContent = subjectName;
+  if (modalTotal) modalTotal.textContent = total;
+  if (modalPresent) modalPresent.textContent = present;
+  if (modalAbsent) modalAbsent.textContent = absent;
+  if (modalPercentage) modalPercentage.textContent = `${percentage}%`;
+
+  subjectDetailModal.showModal();
+}
 function renderRecentAttendance(records) {
   if (!attendanceBody) return;
 
@@ -557,6 +648,21 @@ function initControls() {
   closeAbsentSessionsButton?.addEventListener("click", () =>
     absentSessionsModal?.close(),
   );
+
+  // Subject detail modal close handlers
+  closeSubjectDetailButtons?.forEach(button => {
+    button.addEventListener("click", () => {
+      if (subjectDetailModal) {
+        subjectDetailModal.close();
+      }
+    });
+  });
+
+  subjectDetailModal?.addEventListener("click", (e) => {
+    if (e.target === subjectDetailModal) {
+      subjectDetailModal.close();
+    }
+  });
 
   // Calendar navigation event listeners
   calendarPrevBtn?.addEventListener("click", previousMonth);

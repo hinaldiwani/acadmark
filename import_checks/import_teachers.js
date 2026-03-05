@@ -26,7 +26,7 @@ async function importTeachers() {
     try {
         console.log('👨‍🏫 Importing teachers...\n');
 
-        const csvPath = path.join(__dirname, 'IMPORT DETAILS', 'teachers.csv');
+        const csvPath = path.join(__dirname, '..', 'IMPORT DETAILS', 'teachers.csv');
         const csvContent = fs.readFileSync(csvPath, 'utf-8');
 
         // Parse CSV
